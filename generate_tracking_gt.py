@@ -104,6 +104,7 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
         obj_name = f"{agent_type}_{track_id}"
 
         # Define the 8 points of the box around the vehicle
+        # TODO Add yaw information in the box points 3D coordinates 
         box_points = np.array([[x+l/2, y-w/2, 0, 1],
                        [x+l/2, y+w/2, 0, 1],
                        [x+l/2, y+w/2, z+h, 1],
