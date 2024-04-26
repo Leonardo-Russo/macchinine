@@ -7,12 +7,47 @@ from pytransform3d.rotations import matrix_from_axis_angle
 import utils
 
 def load_csv_data(filepath):
+    """
+    Load data from a CSV file and store it in a list of dictionaries.
+
+    Each dictionary in the list represents a row in the CSV file, with the keys being the column names
+    and the values being the data in each cell.
+
+    Parameters
+    ----------
+    filepath : str
+        The path to the CSV file.
+
+    Returns
+    -------
+    list of dict
+        The data from the CSV file, stored as a list of dictionaries.
+    """
+
     with open(filepath, newline='') as csvfile:
         reader = csv.DictReader(csvfile)
         data = list(reader)
     return data
 
 def get_cam2world(camera_position):
+    """
+    Compute the transformation matrix from camera coordinates to world coordinates.
+
+    The function first defines the vertical direction and the 'from' and 'to' points for the camera.
+    It then computes the rotation and translation matrices using the lookat utility function.
+    The rotation matrix is then flipped about axis 1 to obtain the Camera Frame.
+    Finally, the transformation matrix is computed from the rotation and translation matrices.
+
+    Parameters
+    ----------
+    camera_position : numpy.ndarray
+        The position of the camera in 3D space.
+
+    Returns
+    -------
+    numpy.ndarray
+        The transformation matrix that converts camera coordinates to world coordinates.
+    """
     # Define vertical direction
     up = np.array([0, 0, 1])
 
@@ -28,6 +63,32 @@ def get_cam2world(camera_position):
     return cam2world
 
 def generate_tracking_gt(data, camera_params):
+    """
+    Generate ground truth tracking data from the given original SinD data and camera parameters.
+
+    For each row in the data, the function loads information about the position, orientation, and size of the object.
+    It then defines the 8 points of the box around the object and transforms these points from 3D world coordinates to 2D sensor coordinates.
+    Finally, it obtains the 2D bounding box of the object.
+
+    Parameters
+    ----------
+    data : list of dict
+        The original SinD data for each object in each frame, stored as a list of dictionaries.
+
+    camera_params : dict
+        The parameters of the camera. This should be a dictionary with the following keys:
+        - 'cam2world': The transformation matrix that converts camera coordinates to world coordinates.
+        - 'sensor_size': The size of the camera sensor, given as a tuple of two floats (width, height).
+        - 'image_size': The size of the image produced by the camera, given as a tuple of two integers (width, height).
+        - 'focal_length': The focal length of the camera lens.
+        - 'kappa': The distortion parameter of the camera.
+
+    Returns
+    -------
+    None
+
+    """
+
     for row in data:
         # Load info about position, orientation and size
         track_id = row['track_id']
@@ -58,8 +119,6 @@ def generate_tracking_gt(data, camera_params):
 
         # DEBUG print the 2D bounding box of the vehicle
         print(f"2D Bounding Box of {obj_name}: {bbox_corners}")
-
-
 
 if __name__ == "__main__":
     csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\eight_vehicles.csv"
