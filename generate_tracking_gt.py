@@ -62,7 +62,7 @@ def get_cam2world(camera_position):
 
     return cam2world
 
-def generate_tracking_gt(data, camera_params):
+def generate_tracking_gt(data, camera_params, output_csv_path=None):
     """
     Generate ground truth tracking data from the given original SinD data and camera parameters.
 
@@ -82,6 +82,9 @@ def generate_tracking_gt(data, camera_params):
         - 'image_size': The size of the image produced by the camera, given as a tuple of two integers (width, height).
         - 'focal_length': The focal length of the camera lens.
         - 'kappa': The distortion parameter of the camera.
+
+    output_csv_path : str, optional
+        The path to save the generated tracking data as a CSV file. If not provided, the data is not saved.
 
     Returns
     -------
@@ -120,6 +123,24 @@ def generate_tracking_gt(data, camera_params):
         # DEBUG print the 2D bounding box of the vehicle
         print(f"2D Bounding Box of {obj_name}: {bbox_corners}")
 
+        # Save the tracking data to the output CSV file, which contains
+        # all the columns in the original SinD csv file, plus the 2D bounding box info,
+        # which follows the YOLO format (x_center, y_center, width, height)
+        if output_csv_path:
+            # Create the output CSV file if it doesn't exist
+            with open(output_csv_path, 'w', newline='') as csvfile:
+                fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer.writeheader()
+
+                # Write the tracking data to the output CSV file
+                writer.writerow({**row, 
+                                 'bbox_x_center': bbox_center[0], 
+                                 'bbox_y_center': bbox_center[1],
+                                 'bbox_width': bbox_corners[2] - bbox_corners[0],
+                                 'bbox_height': bbox_corners[3] - bbox_corners[1]})
+            
+
 if __name__ == "__main__":
     csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\eight_vehicles.csv"
     sind_data = load_csv_data(csv_filepath)
@@ -151,4 +172,5 @@ if __name__ == "__main__":
     }
 
     # -- Generate the ground truth tracking data --
-    generate_tracking_gt(sind_data, camera_params)
+    output_csv_path = "tracking_gt.csv"
+    generate_tracking_gt(sind_data, camera_params, output_csv_path=output_csv_path)
