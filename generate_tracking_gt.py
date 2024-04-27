@@ -1,6 +1,8 @@
 import csv
 import numpy as np
 import random
+from matplotlib import pyplot as plt
+from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
 from pytransform3d.rotations import matrix_from_axis_angle
 
@@ -29,7 +31,7 @@ def load_csv_data(filepath):
         data = list(reader)
     return data
 
-def get_cam2world(camera_position):
+def get_cam2world(camera_position, from_point, to_point):
     """
     Compute the transformation matrix from camera coordinates to world coordinates.
 
@@ -42,6 +44,10 @@ def get_cam2world(camera_position):
     ----------
     camera_position : numpy.ndarray
         The position of the camera in 3D space.
+    from_point : numpy.ndarray
+        The starting point of the camera in 3D space.
+    to_point : numpy.ndarray
+        The target point that the camera is pointing at in 3D space.
 
     Returns
     -------
@@ -50,10 +56,6 @@ def get_cam2world(camera_position):
     """
     # Define vertical direction
     up = np.array([0, 0, 1])
-
-    # Define 'from' and 'to' points for the camera
-    from_point = camera_position
-    to_point = np.array([0, 0, 0])    # the camera always points at the origin of the world coordinates
 
     # Compute Rotation and Translation -> Transformation Matrix
     R_C2W, t_C2W = utils.lookat(from_point, to_point, up)     # these are the rotation and translation matrices
@@ -121,9 +123,6 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
         # Obtain the 2D bounding box of the vehicle
         bbox_corners, bbox_center = utils.create_bounding_box(image_box)
 
-        # DEBUG print the 2D bounding box of the vehicle
-        print(f"2D Bounding Box of {obj_name}: {bbox_corners}")
-
         # Save the tracking data to the output CSV file, which contains
         # all the columns in the original SinD csv file, plus the 2D bounding box info,
         # which follows the YOLO format (x_center, y_center, width, height)
@@ -134,22 +133,26 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
                 writer.writeheader()
 
+                bbox = {
+                    'bbox_x_center': bbox_center[0][0], 
+                    'bbox_y_center': bbox_center[0][1],
+                    'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
+                    'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
+                }
+
                 # Write the tracking data to the output CSV file
                 writer.writerow({**row, 
-                                 'bbox_x_center': bbox_center[0], 
-                                 'bbox_y_center': bbox_center[1],
-                                 'bbox_width': bbox_corners[2] - bbox_corners[0],
-                                 'bbox_height': bbox_corners[3] - bbox_corners[1]})
+                                 **bbox})
             
 
 if __name__ == "__main__":
-    csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\eight_vehicles.csv"
+    csv_filepath = "SinD/Data/8_02_1/first_vehicle_track.csv"
     sind_data = load_csv_data(csv_filepath)
 
     # -- Get the camera parameters --
     # Calculate random view and camera position
     alpha, beta = utils.random_view()  # alpha, beta are respectively azimuth and elevation for the camera orientation
-    camera_distance = random.uniform(20, 40)
+    camera_distance  = random.uniform(20, 40)
     focal_length=0.0036
     sensor_size=(0.00367, 0.00274)
     image_size=(640, 480)
@@ -161,8 +164,11 @@ if __name__ == "__main__":
         np.sin(beta)
     ])
 
+    # Define 'from' and 'to' points for the camera
+    from_point = camera_position
+    to_point = np.array([10, 10, 0])
     # Get the camera-to-world transformation matrix
-    cam2world = get_cam2world(camera_position)
+    cam2world = get_cam2world(camera_position, from_point=from_point, to_point=to_point)
 
     camera_params = {
         'cam2world': cam2world,
