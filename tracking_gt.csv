@@ -1,0 +1,1 @@
+track_id,frame_id,timestamp_ms,agent_type,x,y,vx,vy,yaw_rad,heading_rad,length,width,ax,ay,v_lon,v_lat,a_lon,a_lat,bbox_x_center,bbox_y_center,bbox_width,bbox_height
