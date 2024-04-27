@@ -140,6 +140,24 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
                     'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
                 }
 
+                ######## DEBUG #######
+                plt.figure()
+                ax = plt.gca()
+                poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
+                ibox = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
+                ax.add_patch(ibox)
+
+                poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
+                print(f"poly_bounding_box: {poly_bounding_box}")
+                bbox = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
+                ax.add_patch(bbox)
+                ax.set_xlim(0, image_size[0])
+                ax.set_ylim(0, image_size[1])
+                plt.show(block=False)
+                plt.pause(0.042)
+                plt.close()
+                #######################
+
                 # Write the tracking data to the output CSV file
                 writer.writerow({**row, 
                                  **bbox})
