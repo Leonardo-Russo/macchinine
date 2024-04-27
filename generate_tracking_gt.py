@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import random
+import cv2
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
@@ -138,25 +139,39 @@ def generate_tracking_gt(data, camera_params, output_csv_path):
             }
 
             ######## DEBUG #######
-            plt.figure()
-            ax = plt.gca()
-            poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
-            ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
-            ax.add_patch(ibox_patch)
+            # plt.figure()
+            # ax = plt.gca()
+            # poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
+            # ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
+            # ax.add_patch(ibox_patch)
 
-            poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
-            bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
-            ax.add_patch(bbox_patch)
-            ax.set_xlim(0, image_size[0])
-            ax.set_ylim(0, image_size[1])
-            plt.show(block=False)
-            plt.pause(0.042)
-            plt.close()
+            # poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
+            # bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
+            # ax.add_patch(bbox_patch)
+            # ax.set_xlim(0, image_size[0])
+            # ax.set_ylim(0, image_size[1])
+            # plt.show(block=False)
+            # plt.pause(0.092)
+            # plt.close()
+
+            # Create a canvas to display the image and bounding box
+            canvas = 255*np.ones((image_size[1], image_size[0], 3), dtype=np.uint8)
+
+            # Draw the bounding box
+            cv2.polylines(canvas, [np.int32(bbox_corners)], isClosed=True, color=(255, 255, 0), thickness=2)
+
+            # Display the canvas
+            cv2.imshow("Tracking GT", canvas)
+            cv2.waitKey(92)  # Delay between frames in milliseconds
             #######################
-
+            
             # Write the tracking data to the output CSV file
             writer.writerow({**row, 
                             **bbox})
+
+        ###### DEBUG ######
+        # Close the window after displaying the frame
+        cv2.destroyAllWindows()
             
 
 if __name__ == "__main__":
@@ -180,7 +195,7 @@ if __name__ == "__main__":
 
     # Define 'from' and 'to' points for the camera
     from_point = camera_position
-    to_point = np.array([10, 10, 0])
+    to_point = np.array([7.0, 7.5, 0])
     # Get the camera-to-world transformation matrix
     cam2world = get_cam2world(camera_position, from_point=from_point, to_point=to_point)
 
