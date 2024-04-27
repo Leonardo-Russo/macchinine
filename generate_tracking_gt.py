@@ -64,7 +64,7 @@ def get_cam2world(camera_position, from_point, to_point):
 
     return cam2world
 
-def generate_tracking_gt(data, camera_params, output_csv_path=None):
+def generate_tracking_gt(data, camera_params, output_csv_path):
     """
     Generate ground truth tracking data from the given original SinD data and camera parameters.
 
@@ -85,8 +85,8 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
         - 'focal_length': The focal length of the camera lens.
         - 'kappa': The distortion parameter of the camera.
 
-    output_csv_path : str, optional
-        The path to save the generated tracking data as a CSV file. If not provided, the data is not saved.
+    output_csv_path : str
+        The path to save the generated tracking data as a CSV file.
 
     Returns
     -------
@@ -94,73 +94,69 @@ def generate_tracking_gt(data, camera_params, output_csv_path=None):
 
     """
 
-    for row in data:
-        # Load info about position, orientation and size
-        track_id = row['track_id']
-        agent_type = row['agent_type']
-        h = 1.8  # Assuming a height of 1.8 for simplicity
-        x, y, z = (float(row['x']), float(row['y']), 0) # Assuming Z=0 for ground-level objects
-        l, w = (float(row['length']), float(row['width']))
-        yaw = float(row['yaw_rad'])
-        
-        obj_name = f"{agent_type}_{track_id}"
+    with open(output_csv_path, 'w', newline='') as csvfile:
+        fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in data:
+            # Load info about position, orientation and size
+            track_id = row['track_id']
+            agent_type = row['agent_type']
+            h = 1.8  # Assuming a height of 1.8 for simplicity
+            x, y, z = (float(row['x']), float(row['y']), 0) # Assuming Z=0 for ground-level objects
+            l, w = (float(row['length']), float(row['width']))
+            yaw = float(row['yaw_rad'])
+            
+            obj_name = f"{agent_type}_{track_id}"
 
-        # Define the 8 points of the box around the vehicle
-        # TODO Add yaw information in the box points 3D coordinates 
-        box_points = np.array([[x+l/2, y-w/2, 0, 1],
-                       [x+l/2, y+w/2, 0, 1],
-                       [x+l/2, y+w/2, z+h, 1],
-                       [x+l/2, y-w/2, z+h, 1],
-                       [x-l/2, y-w/2, 0, 1],
-                       [x-l/2, y+w/2, 0, 1],
-                       [x-l/2, y+w/2, z+h, 1],
-                       [x-l/2, y-w/2, z+h, 1]])
-        
-        # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
-        image_box = utils.world2image(box_points, **camera_params)
-        image_center = utils.world2image(np.array([[x, y, z, 1]]), **camera_params)
+            # Define the 8 points of the box around the vehicle
+            # TODO Add yaw information in the box points 3D coordinates 
+            box_points = np.array([[x+l/2, y-w/2, 0, 1],
+                        [x+l/2, y+w/2, 0, 1],
+                        [x+l/2, y+w/2, z+h, 1],
+                        [x+l/2, y-w/2, z+h, 1],
+                        [x-l/2, y-w/2, 0, 1],
+                        [x-l/2, y+w/2, 0, 1],
+                        [x-l/2, y+w/2, z+h, 1],
+                        [x-l/2, y-w/2, z+h, 1]])
+            
+            # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
+            image_box = utils.world2image(box_points, **camera_params)
+            image_center = utils.world2image(np.array([[x, y, z, 1]]), **camera_params)
 
-        # Obtain the 2D bounding box of the vehicle
-        bbox_corners, bbox_center = utils.create_bounding_box(image_box)
+            # Obtain the 2D bounding box of the vehicle
+            bbox_corners, bbox_center = utils.create_bounding_box(image_box)
 
-        # Save the tracking data to the output CSV file, which contains
-        # all the columns in the original SinD csv file, plus the 2D bounding box info,
-        # which follows the YOLO format (x_center, y_center, width, height)
-        if output_csv_path:
-            # Create the output CSV file if it doesn't exist
-            with open(output_csv_path, 'w', newline='') as csvfile:
-                fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height']
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                writer.writeheader()
+            # Save the tracking data to the output CSV file, which contains
+            # all the columns in the original SinD csv file, plus the 2D bounding box info,
+            # which follows the YOLO format (x_center, y_center, width, height)
+            bbox = {
+                'bbox_x_center': bbox_center[0][0], 
+                'bbox_y_center': bbox_center[0][1],
+                'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
+                'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
+            }
 
-                bbox = {
-                    'bbox_x_center': bbox_center[0][0], 
-                    'bbox_y_center': bbox_center[0][1],
-                    'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
-                    'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
-                }
+            ######## DEBUG #######
+            plt.figure()
+            ax = plt.gca()
+            poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
+            ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
+            ax.add_patch(ibox_patch)
 
-                ######## DEBUG #######
-                plt.figure()
-                ax = plt.gca()
-                poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
-                ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
-                ax.add_patch(ibox_patch)
+            poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
+            bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
+            ax.add_patch(bbox_patch)
+            ax.set_xlim(0, image_size[0])
+            ax.set_ylim(0, image_size[1])
+            plt.show(block=False)
+            plt.pause(0.042)
+            plt.close()
+            #######################
 
-                poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
-                print(f"poly_bounding_box: {poly_bounding_box}")
-                bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
-                ax.add_patch(bbox_patch)
-                ax.set_xlim(0, image_size[0])
-                ax.set_ylim(0, image_size[1])
-                plt.show(block=False)
-                plt.pause(0.042)
-                plt.close()
-                #######################
-
-                # Write the tracking data to the output CSV file
-                writer.writerow({**row, 
-                                 **bbox})
+            # Write the tracking data to the output CSV file
+            writer.writerow({**row, 
+                            **bbox})
             
 
 if __name__ == "__main__":
