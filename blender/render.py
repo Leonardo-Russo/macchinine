@@ -1,13 +1,19 @@
 import bpy
+import os
+
+# # Set render resolution
+# bpy.context.scene.render.resolution_x = 1920  # Example for Full HD
+# bpy.context.scene.render.resolution_y = 1080
+# bpy.context.scene.render.resolution_percentage = 100
 
 # Set render resolution
-bpy.context.scene.render.resolution_x = 1920  # Example for Full HD
-bpy.context.scene.render.resolution_y = 1080
-bpy.context.scene.render.resolution_percentage = 100
+bpy.context.scene.render.resolution_x = 1280  # Example for Full HD
+bpy.context.scene.render.resolution_y = 720
+bpy.context.scene.render.resolution_percentage = 70
 
 # Set render frame range
 bpy.context.scene.frame_start = 1
-bpy.context.scene.frame_end = 2900  # Adjust based on your animation length
+bpy.context.scene.frame_end = 74  # Adjust based on your animation length
 
 # Set output file format to FFmpeg video
 bpy.context.scene.render.image_settings.file_format = 'FFMPEG'
@@ -17,7 +23,8 @@ bpy.context.scene.render.ffmpeg.constant_rate_factor = 'MEDIUM'
 bpy.context.scene.render.ffmpeg.ffmpeg_preset = 'GOOD'
 
 # Set output file path (change "/path/to/" to your desired directory)
-output_filepath = r"C:\Users\Leonardo\Desktop\Rendering\render.mp4"
+output_dir = os.getcwd()
+output_filepath = os.path.join(output_dir, "untitled.mp4")
 bpy.context.scene.render.filepath = output_filepath
 
 # Use this if you want to overwrite existing files
