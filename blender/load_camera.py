@@ -60,11 +60,11 @@ else:
 camera.data.type = 'PERSP'  # Set camera type to perspective
 
 # Set camera position
-camera.location = camera_parameters["position"]
+camera.location = camera_parameters["camera_position"]
 
 # Set camera rotation (quaternion)
 camera.rotation_mode = "QUATERNION"
-camera.rotation_quaternion = camera_parameters["quaternion"]
+camera.rotation_quaternion = camera_parameters["camera_orientation"]
 
 # Set camera focal length
 camera.data.lens = camera_parameters["focal_length"]

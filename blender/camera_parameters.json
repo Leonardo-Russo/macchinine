@@ -1,5 +1,8 @@
 {
-    "position": [0, 0, 5],
-    "quaternion": [0.724, 0.608, -0.209, -0.249],
-    "focal_length": 36
-  }  
+    "camera_position": [0, 0, 5],
+    "camera_target": [7.0, 7.5, 0.0],
+    "focal_length": 36,
+    "sensor_size": [0.00367, 0.00274],
+    "image_size": [640, 480],
+    "kappa": 0.4
+  }

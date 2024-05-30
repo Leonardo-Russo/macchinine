@@ -112,6 +112,16 @@ def create_bounding_box(points):
     bottom_right = (x_max, y_max)
     bottom_left = (x_min, y_max)
 
+    # Check for NaN
+    if np.isnan(x_min) or np.isnan(x_max) or np.isnan(y_min) or np.isnan(y_max):
+        # print("Something in Bounding Box is NaN!"
+        #       "x_min: ", x_min,
+        #       "x_max: ", x_max,
+        #       "y_min: ", y_min,
+        #       "y_max: ", y_max)
+        print("Points are: ", points)
+        return None
+
     center=np.array([[
         int((x_max+x_min)/2),
         int((y_max+y_min)/2)

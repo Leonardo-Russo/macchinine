@@ -2,6 +2,7 @@ import csv
 import numpy as np
 import random
 import cv2
+import json
 from matplotlib import pyplot as plt
 from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
@@ -65,7 +66,7 @@ def get_cam2world(camera_position, from_point, to_point):
 
     return cam2world
 
-def generate_tracking_gt(data, camera_params, output_csv_path):
+def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
     """
     Generate ground truth tracking data from the given original SinD data and camera parameters.
 
@@ -122,91 +123,92 @@ def generate_tracking_gt(data, camera_params, output_csv_path):
                         [x-l/2, y-w/2, z+h, 1]])
             
             # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
-            image_box = utils.world2image(box_points, **camera_params)
-            image_center = utils.world2image(np.array([[x, y, z, 1]]), **camera_params)
+            image_box = utils.world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'], kappa=camera_params['kappa'])
+            image_center = utils.world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'], kappa=camera_params['kappa'])
 
-            # Obtain the 2D bounding box of the vehicle
-            bbox_corners, bbox_center = utils.create_bounding_box(image_box)
+            if np.isnan(image_box).any() or np.isnan(image_center).any():
+                print(f"NaN values detected in image_box or image_center for object {obj_name} -> skipping this frame...")
+                # this means that the object is not fully visible in the image and for this reason we cannot (for now) handle the 
+                # computation of the center of the bounding box. For this reason, we'll skip this object and continue with the next one.
+                bbox = {
+                    'bbox_x_center': np.nan, 
+                    'bbox_y_center': np.nan,
+                    'bbox_width': np.nan,
+                    'bbox_height': np.nan
+                }
 
-            # Save the tracking data to the output CSV file, which contains
-            # all the columns in the original SinD csv file, plus the 2D bounding box info,
-            # which follows the YOLO format (x_center, y_center, width, height)
-            bbox = {
-                'bbox_x_center': bbox_center[0][0], 
-                'bbox_y_center': bbox_center[0][1],
-                'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
-                'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
-            }
+            else:
+                # Obtain the 2D bounding box of the vehicle
+                bbox_corners, bbox_center = utils.create_bounding_box(image_box)
 
-            ######## DEBUG #######
-            # plt.figure()
-            # ax = plt.gca()
-            # poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
-            # ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
-            # ax.add_patch(ibox_patch)
+                # Save the tracking data to the output CSV file, which contains
+                # all the columns in the original SinD csv file, plus the 2D bounding box info,
+                # which follows the YOLO format (x_center, y_center, width, height)
+                bbox = {
+                    'bbox_x_center': bbox_center[0][0], 
+                    'bbox_y_center': bbox_center[0][1],
+                    'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
+                    'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
+                }
 
-            # poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
-            # bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
-            # ax.add_patch(bbox_patch)
-            # ax.set_xlim(0, image_size[0])
-            # ax.set_ylim(0, image_size[1])
-            # plt.show(block=False)
-            # plt.pause(0.092)
-            # plt.close()
+                if debug:
+                    # plt.figure()
+                    # ax = plt.gca()
+                    # poly_image_box = [(x, image_size[1] - y) for x, y in utils.box2list(image_box)]
+                    # ibox_patch = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
+                    # ax.add_patch(ibox_patch)
 
-            # Create a canvas to display the image and bounding box
-            canvas = 255*np.ones((image_size[1], image_size[0], 3), dtype=np.uint8)
+                    # poly_bounding_box = [(x, image_size[1] - y) for x, y in bbox_corners]
+                    # bbox_patch = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
+                    # ax.add_patch(bbox_patch)
+                    # ax.set_xlim(0, image_size[0])
+                    # ax.set_ylim(0, image_size[1])
+                    # plt.show(block=False)
+                    # plt.pause(0.092)
+                    # plt.close()
+                    
+                    # Create a canvas to display the image and bounding box
+                    canvas = 255*np.ones((image_size[1], image_size[0], 3), dtype=np.uint8)
 
-            # Draw the bounding box
-            cv2.polylines(canvas, [np.int32(bbox_corners)], isClosed=True, color=(255, 255, 0), thickness=2)
+                    # Draw the bounding box
+                    cv2.polylines(canvas, [np.int32(bbox_corners)], isClosed=True, color=(255, 255, 0), thickness=2)
 
-            # Display the canvas
-            cv2.imshow("Tracking GT", canvas)
-            cv2.waitKey(92)  # Delay between frames in milliseconds
-            #######################
+                    # Display the canvas
+                    cv2.imshow("Tracking GT", canvas)
+                    cv2.waitKey(92)  # Delay between frames in milliseconds\
             
             # Write the tracking data to the output CSV file
             writer.writerow({**row, 
                             **bbox})
 
-        ###### DEBUG ######
+        if debug:
         # Close the window after displaying the frame
-        cv2.destroyAllWindows()
+            cv2.destroyAllWindows()
             
 
 if __name__ == "__main__":
-    csv_filepath = "SinD/Data/8_02_1/first_vehicle_track.csv"
+    csv_filepath = "SinD/Data/8_02_1/Veh_smoothed_tracks.csv"
+    # csv_filepath = "SinD/Data/8_02_1/three_vehicles_track.csv"
     sind_data = load_csv_data(csv_filepath)
 
     # -- Get the camera parameters --
-    # Calculate random view and camera position
-    alpha, beta = utils.random_view()  # alpha, beta are respectively azimuth and elevation for the camera orientation
-    camera_distance  = random.uniform(20, 40)
-    focal_length=0.0036
-    sensor_size=(0.00367, 0.00274)
-    image_size=(640, 480)
-    kappa=0.4 # distortion parameter
+    with open('blender/camera_parameters.json', 'r') as file:
+        camera_params = json.load(file)
 
-    camera_position = camera_distance * np.array([
-        np.cos(beta) * np.cos(alpha),
-        np.cos(beta) * np.sin(alpha),
-        np.sin(beta)
-    ])
-
-    # Define 'from' and 'to' points for the camera
+        camera_position = np.array(camera_params['camera_position'])     # position of the camera
+        camera_target = np.array(camera_params['camera_target'])         # target point that the camera is pointing at
+        focal_length = camera_params['focal_length'] * 1e-4              # focal length in m
+        sensor_size = camera_params['sensor_size']                       # sensor size in mm
+        image_size = camera_params['image_size']                         # image size in pixels
+        kappa = camera_params['kappa']                                   # distortion parameter
+    
+    # Get the Camera-to-World Transformation matrix
     from_point = camera_position
-    to_point = np.array([7.0, 7.5, 0])
-    # Get the camera-to-world transformation matrix
+    to_point = camera_target
     cam2world = get_cam2world(camera_position, from_point=from_point, to_point=to_point)
-
-    camera_params = {
-        'cam2world': cam2world,
-        'sensor_size': sensor_size,
-        'image_size': image_size,
-        'focal_length': focal_length,
-        'kappa': kappa,
-    }
+    camera_params['cam2world'] = cam2world
 
     # -- Generate the ground truth tracking data --
     output_csv_path = "tracking_gt.csv"
-    generate_tracking_gt(sind_data, camera_params, output_csv_path=output_csv_path)
+    generate_tracking_gt(sind_data, camera_params, output_csv_path=output_csv_path, debug=False)
+    print(f"Ground truth tracking data saved to {output_csv_path}")
