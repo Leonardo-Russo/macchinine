@@ -22,9 +22,9 @@ bpy.context.scene.render.ffmpeg.codec = 'H264'
 bpy.context.scene.render.ffmpeg.constant_rate_factor = 'MEDIUM'
 bpy.context.scene.render.ffmpeg.ffmpeg_preset = 'GOOD'
 
-# Set output file path (change "/path/to/" to your desired directory)
+# Set output file path
 output_dir = os.getcwd()
-output_filepath = os.path.join(output_dir, "untitled.mp4")
+output_filepath = os.path.join(output_dir, "scene.mp4")
 bpy.context.scene.render.filepath = output_filepath
 
 # Use this if you want to overwrite existing files

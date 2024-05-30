@@ -33,12 +33,13 @@ def load_csv_data_and_animate(filepath):
             obj.keyframe_insert(data_path="rotation_euler", frame=frame_id)
 
     output_dir = os.getcwd()
-    output_filepath = os.path.join(output_dir, "untitled.blend")
+    output_filepath = os.path.join(output_dir, "blender/untitled.blend")
     bpy.ops.wm.save_as_mainfile(filepath=output_filepath)
 
 # Example usage
 #csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\Veh_smoothed_tracks.csv"
 #csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\Veh_smoothed_tracks_single.csv"
 # csv_filepath = r"C:\\Users\\Matteo2\\Documents\\Projects\\Macchinine\\SindToBlender\\LeoCode\\Blender-Rendering\eight_vehicles.csv"
-csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\first_vehicle_track.csv"
+# csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\first_vehicle_track.csv"
+csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\three_vehicles_track.csv"
 load_csv_data_and_animate(csv_filepath)

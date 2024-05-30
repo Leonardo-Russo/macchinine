@@ -44,10 +44,16 @@ def set_background_color(color=(0.35, 0.35, 0.35, 1)):  # Dark gray background
 
 # Load camera parameters from JSON file
 parameters_file = "camera_parameters.json"
+additional_parameters_file = "camera_additional_parameters.json"
 parameters_path = os.path.join(os.getcwd(), parameters_file)
+additional_parameters_path = os.path.join(os.getcwd(), additional_parameters_file)
 
 with open(parameters_path, "r") as file:
     camera_parameters = json.load(file)
+
+with open(additional_parameters_path, "r") as file:
+    additional_parameters = json.load(file)
+
 
 # Check if camera already exists, if not, create it
 if "Camera" not in bpy.data.objects:
@@ -64,7 +70,7 @@ camera.location = camera_parameters["camera_position"]
 
 # Set camera rotation (quaternion)
 camera.rotation_mode = "QUATERNION"
-camera.rotation_quaternion = camera_parameters["camera_orientation"]
+camera.rotation_quaternion = additional_parameters["camera_orientation"]
 
 # Set camera focal length
 camera.data.lens = camera_parameters["focal_length"]
@@ -75,5 +81,5 @@ setup_lighting()
 
 # Save the scene
 output_dir = os.getcwd()
-output_filepath = os.path.join(output_dir, "untitled.blend")
+output_filepath = os.path.join(output_dir, "blender/untitled.blend")
 bpy.ops.wm.save_as_mainfile(filepath=output_filepath)
