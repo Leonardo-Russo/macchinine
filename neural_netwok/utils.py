@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 import random
 
-
+from pytransform3d.plot_utils import make_3d_axis
+from pytransform3d.rotations import active_matrix_from_intrinsic_euler_xyz, matrix_from_axis_angle
+from pytransform3d.transformations import transform_from, plot_transform
+from pytransform3d.camera import make_world_grid, world2image, plot_camera
 
 
 def generate_random_box(hlim=(2, 3), wlim=(3, 4), llim=(3, 5), xlim=(0, 0), ylim=(0, 0), zlim=(0, 0)):
@@ -170,7 +173,7 @@ def findRoadIntersection(camera_position, direction):
 
 
 
-def getImage(debug=True, focal_length=0.0036, sensor_size=(0.00367, 0.00274), image_size=(640, 480), kappa=0.4):
+def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), image_size=(640, 480), kappa=0.4):
     # TODO:
     # Dobbiamo far si che azimuth e phi non vengano passati nel dizionario al modello ma invece che al suo interno il modello li calcoli
     # a partire da camera_position e i parametri della bounding box. Quindi dobbiamo solo spostare l'operazione da getImage al modello.
