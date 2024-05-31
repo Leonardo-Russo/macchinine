@@ -136,3 +136,110 @@ def random_view(alim=(0, 2*np.pi), blim=(np.deg2rad(10), np.deg2rad(60))):
     beta = random.uniform(blim[0], blim[1])
 
     return azimuth, beta
+
+
+def get_cam2world(from_point, to_point, up=np.array([0, 0, 1])):
+    """
+    Compute the transformation matrix from camera coordinates to world coordinates.
+
+    The function first defines the vertical direction and the 'from' and 'to' points for the camera.
+    It then computes the rotation and translation matrices using the lookat utility function.
+    The rotation matrix is then flipped about axis 1 to obtain the Camera Frame.
+    Finally, the transformation matrix is computed from the rotation and translation matrices.
+
+    Parameters
+    ----------
+    from_point : numpy.ndarray
+        The starting point of the camera in 3D space.
+    to_point : numpy.ndarray
+        The target point that the camera is pointing at in 3D space.
+    up : numpy.ndarray
+        Vector defining the vertical direction of the camera.
+
+    Returns
+    -------
+    numpy.ndarray
+        The transformation matrix that converts camera coordinates to world coordinates.
+    """
+
+    # Compute Rotation and Translation -> Transformation Matrix
+    R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
+    R_C2W = R_C2W @ matrix_from_axis_angle((1, 0, 0, np.pi))     # flips about axis 1 to obtain Camera Frame
+    cam2world = transform_from(R_C2W, t_C2W)
+
+    return cam2world
+
+
+def matrix2quat(R):
+    """
+    Convert a rotation matrix to a quaternion.
+
+    Parameters
+    ----------
+    R : array-like, shape (3, 3)
+        Rotation matrix.
+
+    Returns
+    -------
+    q : ndarray, shape (4,)
+        Quaternion (w, x, y, z).
+    """
+    assert R.shape == (3, 3), "Input rotation matrix must be 3x3"
+    
+    # Calculate the trace of the matrix
+    tr = np.trace(R)
+
+    if tr > 0:
+        S = np.sqrt(tr + 1.0) * 2  # S = 4 * qw
+        qw = 0.25 * S
+        qx = (R[2, 1] - R[1, 2]) / S
+        qy = (R[0, 2] - R[2, 0]) / S
+        qz = (R[1, 0] - R[0, 1]) / S
+    elif (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]):
+        S = np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2]) * 2  # S = 4 * qx
+        qw = (R[2, 1] - R[1, 2]) / S
+        qx = 0.25 * S
+        qy = (R[0, 1] + R[1, 0]) / S
+        qz = (R[0, 2] + R[2, 0]) / S
+    elif R[1, 1] > R[2, 2]:
+        S = np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2]) * 2  # S = 4 * qy
+        qw = (R[0, 2] - R[2, 0]) / S
+        qx = (R[0, 1] + R[1, 0]) / S
+        qy = 0.25 * S
+        qz = (R[1, 2] + R[2, 1]) / S
+    else:
+        S = np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1]) * 2  # S = 4 * qz
+        qw = (R[1, 0] - R[0, 1]) / S
+        qx = (R[0, 2] + R[2, 0]) / S
+        qy = (R[1, 2] + R[2, 1]) / S
+        qz = 0.25 * S
+
+    return np.array([qw, qx, qy, qz])
+
+
+def C2q(C):
+    """
+    Convert a direction cosines matrix to quaternions.
+
+    Parameters
+    ----------
+    C : array-like, shape (3, 3)
+        Direction cosines matrix (rotation matrix).
+
+    Returns
+    -------
+    q0 : float
+        Scalar part of the quaternion.
+    
+    q : ndarray, shape (3,)
+        Vector part of the quaternion.
+    """
+    assert C.shape == (3, 3), "Input matrix must be 3x3"
+
+    q0 = 0.5 * np.sqrt(1 + C[0, 0] + C[1, 1] + C[2, 2])
+    
+    q = 1 / (4 * q0) * np.array([C[1, 2] - C[2, 1], 
+                                 C[2, 0] - C[0, 2], 
+                                 C[0, 1] - C[1, 0]])
+
+    return np.array([q0, *q])
