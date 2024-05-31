@@ -138,7 +138,7 @@ def random_view(alim=(0, 2*np.pi), blim=(np.deg2rad(10), np.deg2rad(60))):
     return azimuth, beta
 
 
-def get_cam2world(camera_position, from_point, to_point):
+def get_cam2world(from_point, to_point, up=np.array([0, 0, 1])):
     """
     Compute the transformation matrix from camera coordinates to world coordinates.
 
@@ -149,20 +149,18 @@ def get_cam2world(camera_position, from_point, to_point):
 
     Parameters
     ----------
-    camera_position : numpy.ndarray
-        The position of the camera in 3D space.
     from_point : numpy.ndarray
         The starting point of the camera in 3D space.
     to_point : numpy.ndarray
         The target point that the camera is pointing at in 3D space.
+    up : numpy.ndarray
+        Vector defining the vertical direction of the camera.
 
     Returns
     -------
     numpy.ndarray
         The transformation matrix that converts camera coordinates to world coordinates.
     """
-    # Define vertical direction
-    up = np.array([0, 0, 1])
 
     # Compute Rotation and Translation -> Transformation Matrix
     R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices

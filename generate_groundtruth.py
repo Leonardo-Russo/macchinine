@@ -8,6 +8,7 @@ from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
 from pytransform3d.rotations import matrix_from_axis_angle
 from pytransform3d.rotations import quaternion_from_matrix
+import quaternion
 
 import utils
 
@@ -35,7 +36,7 @@ def load_csv_data(filepath):
     return data
 
 
-def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
+def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
     """
     Generate ground truth tracking data from the given original SinD data and camera parameters.
 
@@ -66,7 +67,7 @@ def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
     """
 
     with open(output_csv_path, 'w', newline='') as csvfile:
-        fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height']
+        fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height', 'x_center', 'y_center']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for row in data:
@@ -82,12 +83,12 @@ def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
 
             # Define the 8 points of the box around the vehicle
             # TODO Add yaw information in the box points 3D coordinates 
-            box_points = np.array([[x+l/2, y-w/2, 0, 1],
-                        [x+l/2, y+w/2, 0, 1],
+            box_points = np.array([[x+l/2, y-w/2, z, 1],
+                        [x+l/2, y+w/2, z, 1],
                         [x+l/2, y+w/2, z+h, 1],
                         [x+l/2, y-w/2, z+h, 1],
-                        [x-l/2, y-w/2, 0, 1],
-                        [x-l/2, y+w/2, 0, 1],
+                        [x-l/2, y-w/2, z, 1],
+                        [x-l/2, y+w/2, z, 1],
                         [x-l/2, y+w/2, z+h, 1],
                         [x-l/2, y-w/2, z+h, 1]])
             
@@ -106,6 +107,11 @@ def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
                     'bbox_height': np.nan
                 }
 
+                center_on_road = {
+                    'x_center': np.nan,
+                    'y_center': np.nan
+                }
+
             else:
                 # Obtain the 2D bounding box of the vehicle
                 bbox_corners, bbox_center = utils.create_bounding_box(image_box)
@@ -118,6 +124,11 @@ def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
                     'bbox_y_center': bbox_center[0][1],
                     'bbox_width': abs(bbox_corners[2][0] - bbox_corners[0][0]),
                     'bbox_height': abs(bbox_corners[2][1] - bbox_corners[0][1])
+                }
+
+                center_on_road = {
+                    'x_center': image_center[0][0],
+                    'y_center': image_center[0][1]
                 }
 
                 if debug:
@@ -148,7 +159,8 @@ def generate_tracking_gt(data, camera_params, output_csv_path, debug=False):
             
             # Write the tracking data to the output CSV file
             writer.writerow({**row, 
-                            **bbox})
+                            **bbox,
+                            **center_on_road})
 
         if debug:
         # Close the window after displaying the frame
@@ -172,11 +184,20 @@ if __name__ == "__main__":
         kappa = camera_params['kappa']                                   # distortion parameter
     
     # Get the Camera-to-World Transformation matrix
-    from_point = camera_position
-    to_point = camera_target
-    cam2world = utils.get_cam2world(camera_position, from_point=from_point, to_point=to_point)
-    R_C2W = cam2world[:3, :3]
-    quaternions = utils.matrix2quat(R_C2W)
+    cam2world = utils.get_cam2world(from_point=camera_position, to_point=camera_target, up=np.array([0, 0, 1]))
+
+    # Compute the quaternions from the rotation matrix - don't ask why this works but it doesn't work in other ways
+    not_cam2world = utils.get_cam2world(from_point=camera_target, to_point=camera_position, up=np.array([0, 0, -1]))
+    q = utils.matrix2quat(not_cam2world[:3, :3])
+
+    print(f"Camera Position: {camera_position}")
+    print(f"Camera Target: {camera_target}")
+    print(f"Focal Length: {focal_length}")
+    print(f"Sensor Size: {sensor_size}")
+    print(f"Image Size: {image_size}")
+    print(f"Kappa: {kappa}")
+    print(f"Camera-to-World Transformation Matrix:\n{cam2world}")
+    print(f"Quaternions: {q}")
     
     # TODO: per qualche cazzo di motivo i quaternioni sono invertiti rispetto a quelli di blender
 
@@ -184,7 +205,7 @@ if __name__ == "__main__":
 
     camera_additional_params = {
         'cam2world': cam2world.tolist(),
-        'camera_orientation': quaternions.tolist()
+        'camera_orientation': q.tolist()
     }
 
     # Save Additional Camera Parameters to a JSON file
@@ -194,5 +215,5 @@ if __name__ == "__main__":
 
     # -- Generate the ground truth tracking data --
     output_csv_path = "tracking_groundtruth.csv"
-    generate_tracking_gt(sind_data, camera_params, output_csv_path=output_csv_path, debug=False)
+    generate_groundtruth(sind_data, camera_params, output_csv_path=output_csv_path, debug=False)
     print(f"Ground truth tracking data saved to {output_csv_path}")
