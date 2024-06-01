@@ -93,8 +93,8 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
                         [x-l/2, y-w/2, z+h, 1]])
             
             # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
-            image_box = utils.world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'], kappa=camera_params['kappa'])
-            image_center = utils.world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'], kappa=camera_params['kappa'])
+            image_box = utils.world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
+            image_center = utils.world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
 
             if np.isnan(image_box).any() or np.isnan(image_center).any():
                 print(f"NaN values detected in image_box or image_center for object {obj_name} -> skipping this frame...")
@@ -188,7 +188,8 @@ if __name__ == "__main__":
 
     # Compute the quaternions from the rotation matrix - don't ask why this works but it doesn't work in other ways
     not_cam2world = utils.get_cam2world(from_point=camera_target, to_point=camera_position, up=np.array([0, 0, -1]))
-    q = utils.matrix2quat(not_cam2world[:3, :3])
+    q = utils.C2q(not_cam2world[:3, :3].T)
+    # q = utils.matrix2quat(not_cam2world[:3, :3])
 
     print(f"Camera Position: {camera_position}")
     print(f"Camera Target: {camera_target}")
