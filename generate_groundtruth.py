@@ -8,7 +8,7 @@ from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
 from pytransform3d.rotations import matrix_from_axis_angle
 from pytransform3d.rotations import quaternion_from_matrix
-import quaternion
+# import quaternion
 
 import utils
 
@@ -168,8 +168,8 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
             
 
 if __name__ == "__main__":
-    # csv_filepath = "SinD/Data/8_02_1/Veh_smoothed_tracks.csv"
-    csv_filepath = "SinD/Data/8_02_1/three_vehicles_track.csv"
+    csv_filepath = "SinD/Data/8_02_1/Veh_smoothed_tracks.csv"
+    # csv_filepath = "SinD/Data/8_02_1/three_vehicles_track.csv"
     sind_data = load_csv_data(csv_filepath)
 
     # -- Get the camera parameters --
