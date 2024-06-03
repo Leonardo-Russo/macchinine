@@ -4,5 +4,5 @@
     "focal_length": 36,
     "sensor_size": [0.00367, 0.00274],
     "image_size": [640, 480],
-    "kappa": 0.4
+    "kappa": 0.0
   }

@@ -169,6 +169,56 @@ def get_cam2world(from_point, to_point, up=np.array([0, 0, 1])):
 
     return cam2world
 
+def visualize_scene(image_size, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center):
+    """
+    Visualize the scene with the generated elements.
+
+    Parameters:
+    image_size, beta, azimuth, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center
+    """
+
+    plt.figure(figsize=(12, 5))
+    show_camera = False  # Set to True to show the camera in the plot
+
+    # Show the World Image
+    ax = make_3d_axis(1, 121, unit="m")
+    plot_transform(ax)
+    ax.scatter(box[:, 0], box[:, 1], box[:, 2], s=2, alpha=1, c='r')
+    ax.scatter(world_grid[:, 0], world_grid[:, 1], world_grid[:, 2], s=1, alpha=0.2)
+    ax.scatter(0, 0, 0, s=20, alpha=1, c='g')
+
+    # if show_camera:
+    #     plot_transform(ax, A2B=cam2world, s=0.3, name="Camera")
+    #     plot_camera(ax, intrinsic_camera_matrix, cam2world, sensor_size=sensor_size, virtual_image_distance=0.5)
+
+    lim = (-np.max(np.abs(camera_position)) / 2, np.max(np.abs(camera_position)) / 2)
+    ax.set_xlim(lim)
+    ax.set_ylim(lim)
+    ax.set_zlim(lim)
+    ax.set_title("Camera and world frames")
+    # ax.view_init(elev=np.rad2deg(elevation), azim=np.rad2deg(azimuth))
+
+    # Visualize Camera Image
+    ax = plt.subplot(122, aspect="equal")
+    ax.scatter(image_grid[:, 0], -(image_grid[:, 1] - image_size[1]), s=1, alpha=0.2)
+
+    poly_image_box = [(x, image_size[1] - y) for x, y in box2list(image_box)]
+    ibox = Polygon(poly_image_box, closed=True, edgecolor='#d6d327', fill=False, linewidth=1.5)
+    ax.add_patch(ibox)
+
+    poly_bounding_box = [(x, image_size[1] - y) for x, y in bounding_box]
+    bbox = Polygon(poly_bounding_box, closed=True, edgecolor='cyan', fill=False, linewidth=1.5)
+    ax.add_patch(bbox)
+    ax.scatter(image_center[:, 0], -(image_center[:, 1] - image_size[1]))
+
+
+    ax.scatter(bb_center[:, 0], -(bb_center[:, 1] - image_size[1]), edgecolor='cyan')
+
+    ax.set_title("Camera image")
+    ax.set_xlim(0, image_size[0])
+    ax.set_ylim(0, image_size[1])
+
+    plt.show()
 
 def matrix2quat(R):
     """

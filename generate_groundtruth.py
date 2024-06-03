@@ -8,6 +8,7 @@ from matplotlib.patches import Polygon
 from pytransform3d.transformations import transform_from
 from pytransform3d.rotations import matrix_from_axis_angle
 from pytransform3d.rotations import quaternion_from_matrix
+from pytransform3d.camera import make_world_grid, world2image
 # import quaternion
 
 import utils
@@ -70,7 +71,7 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
         fieldnames = list(data[0].keys()) + ['bbox_x_center', 'bbox_y_center', 'bbox_width', 'bbox_height', 'x_center', 'y_center']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        for row in data:
+        for i, row in enumerate(data):
             # Load info about position, orientation and size
             track_id = row['track_id']
             agent_type = row['agent_type']
@@ -93,8 +94,8 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
                         [x-l/2, y-w/2, z+h, 1]])
             
             # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
-            image_box = utils.world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
-            image_center = utils.world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
+            image_box = world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
+            image_center = world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
 
             if np.isnan(image_box).any() or np.isnan(image_center).any():
                 print(f"NaN values detected in image_box or image_center for object {obj_name} -> skipping this frame...")
@@ -115,6 +116,12 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
             else:
                 # Obtain the 2D bounding box of the vehicle
                 bbox_corners, bbox_center = utils.create_bounding_box(image_box)
+
+                # DEBUG visualization
+                if i >= 24856:
+                    world_grid = make_world_grid(n_lines=70, n_points_per_line=500, xlim=[-50, 50], ylim=[-50, 50])
+                    image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+                    utils.visualize_scene(image_size, box_points, world_grid, camera_position, image_grid, image_box, bbox_corners, image_center, bbox_center)
 
                 # Save the tracking data to the output CSV file, which contains
                 # all the columns in the original SinD csv file, plus the 2D bounding box info,
