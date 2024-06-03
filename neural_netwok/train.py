@@ -20,9 +20,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='input batch size for training (default: 32)')
     parser.add_argument('--num_samples', type=int, default=60000, help='number of samples to train (default: 60000)')
     parser.add_argument('--input_size', type=int, default=4, help='input size of MLP (default: 784)')
-    parser.add_argument('--hidden_sizes', type=int, nargs='+', default=[10, 5], help='sizes of hidden layers (default: [128, 64])')
+    parser.add_argument('--hidden_sizes', type=int, nargs='+', default=[20, 10], help='sizes of hidden layers (default: [128, 64])')
     parser.add_argument('--output_size', type=int, default=2, help='output size of MLP (default: 10)')
-    parser.add_argument('--epochs', type=int, default=1, help='number of epochs to train (default: 1)')
+    parser.add_argument('--epochs', type=int, default=1000, help='number of epochs to train (default: 1)')
     parser.add_argument('--data_path', type=str, default=None, help='path to the dataset cvs')
 
     args = parser.parse_args()
