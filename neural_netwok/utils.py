@@ -8,6 +8,21 @@ from pytransform3d.rotations import active_matrix_from_intrinsic_euler_xyz, matr
 from pytransform3d.transformations import transform_from, plot_transform
 from pytransform3d.camera import make_world_grid, world2image, plot_camera
 
+def is_approx_rotation_matrix(R, tolerance=1e-4):
+    if R.shape != (3, 3):
+        raise ValueError(f"must be a 3x3 matrix:, instead  shape {R.shape=} {R=} ")
+    
+    # Check if the matrix is close to orthogonal: R.T * R ≈ I
+    I_approx = np.dot(R.T, R)
+    identity_matrix = np.eye(3)
+    if not np.allclose(I_approx, identity_matrix, atol=tolerance):
+        return False
+
+    # Check if the determinant of the matrix is close to 1
+    if not np.isclose(np.linalg.det(R), 1, atol=tolerance):
+        return False
+
+    return True
 
 def generate_random_box(hlim=(2, 3), wlim=(3, 4), llim=(3, 5), xlim=(0, 0), ylim=(0, 0), zlim=(0, 0)):
     """ Generate random box with the given limit. """
@@ -123,10 +138,63 @@ def random_view(alim=(0, 2*np.pi), blim=(np.deg2rad(10), np.deg2rad(60))):
 
     return azimuth, beta
 
-def getAzimuthElevation(focal_length, sensor_size, image_size, point_on_image, R_C2W):
+def getAzimuthElevation(focal_length, sensor_size, image_size, point_on_image, R_C2W,check_flag= True):
     """
     Retrieve Azimuth and Elevation angles from the bounding box center coordinates on image plane.
     """
+    # print(f"{type(focal_length)=}")
+    # print(f"{type(sensor_size)=}")
+    # print(f"{type(image_size)=}")
+    # print(f"{type(point_on_image)=}")
+    # print(f"{type(R_C2W)=}")
+
+
+    # print(f"{focal_length=}")
+    # print(f"{sensor_size=}")
+    # print(f"{image_size=}")
+    #print(f"{point_on_image=}")
+    # print(f"{R_C2W=}")
+    
+    # print(f"{len(sensor_size)=}")
+    # print(f"{image_size=}")
+    # print(f"{len(point_on_image)=}")
+    # print(f"{R_C2W.shape=}")
+    # if not isinstance(focal_length, float):
+    #     raise TypeError("focal_length must be a float")
+    # if not isinstance(sensor_size, (tuple, list)):
+    #         raise TypeError(f"sensor_size must be a tuple or a list, instead it is {type(sensor_size)=} with value {sensor_size=}")
+    # if not isinstance(image_size, (tuple, list)):
+    #     raise TypeError("image_size must be a tuple")
+    # if not isinstance(point_on_image, np.ndarray):
+    #     raise TypeError("point_on_image must be a numpy.ndarray")
+    # if not isinstance(R_C2W, np.ndarray):
+    #     raise TypeError("R_C2W must be a numpy.ndarray")
+
+    # # Checking if focal_length is within a specific range
+    # if not (0.0001 < focal_length < 0.01):
+    #     raise ValueError("focal_length must be between 0.0001 and 0.01.")
+
+    # # Checking if sensor_size's width and height are within specified bounds
+    # if not (0.000367 < sensor_size[0] < 0.0367 and 0.000274 < sensor_size[1] < 0.0274):
+    #     raise ValueError("Sensor size is wrong.")
+
+    # # Checking if a point on the image is within the boundaries of the image size
+    # if (not np.all((0 <= point_on_image) & (point_on_image <= image_size))) and (check_flag):
+    #     raise ValueError(f"point_on_image must be within the bounds of image_size:{point_on_image=}")
+
+    # # Checking if the matrix R_C2W is a valid rotation matrix
+    # if not is_approx_rotation_matrix(R_C2W):
+    #     raise ValueError(f"R_C2W is not a rotation matrix: {R_C2W=}")
+    
+    # if len(sensor_size)!=2:
+    #     raise ValueError(f"len(sensor_size) is diverse from 2: {len(sensor_size)=}")
+
+    # if len(point_on_image)!=1:
+    #     raise ValueError(f"len(point_on_image) is diverse from 1: {len(point_on_image)=}")
+
+    # if R_C2W.shape!= (3,3):
+    #     raise ValueError(f"mast be a 3x3 matrix:, instead  shape {R_C2W.shape=} {R_C2W=} ")
+
 
     # Calculate K Matrix
     fx = (focal_length / sensor_size[0]) * image_size[0]
@@ -159,7 +227,17 @@ def findRoadIntersection(camera_position, direction):
     Returns:
     intersection (numpy.ndarray): The point of intersection on the z=0 plane.
     """
+    # if not isinstance(camera_position, np.ndarray):
+    #     raise TypeError("camera_position must be a numpy.ndarray")
+    # if not isinstance(direction, np.ndarray):
+    #     raise TypeError("direction must be a numpy.ndarray")
+
     # Extract the z-component of the camera position and the direction vector
+
+    # print(f"{camera_position.shape=}")
+    # print(f"{direction.shape=}")
+    
+    camera_position=camera_position.reshape(3)
     c_z = camera_position[2]
     b_z = direction[2]
 
@@ -204,31 +282,43 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     up = np.array([0, 0, 1])
 
     # Define 'from' and 'to' points for the camera
+
+
     from_point = camera_position
     to_point = np.array([0, 0, 0])    # the camera always points at the origin of the world coordinates
 
+    # print(f"{from_point=}")
+    # print(f"{to_point=}")
     # Generate the Box
-    box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-5, 5), ylim=(-5, 5), zlim=(0, 0))
 
-    # Compute Rotation and Translation -> Transformation Matrix
-    R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
-    R_C2W = R_C2W @ matrix_from_axis_angle((1, 0, 0, np.pi))     # flips about axis 1 to obtain Camera Frame
-    cam2world = transform_from(R_C2W, t_C2W)
+    # Create the bounding box, be shure that bb_center is positive and inside the image plane
+    while True:
+        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-5, 5), ylim=(-5, 5), zlim=(0, 0))
 
-    # Create intrinsic camera matrix
-    intrinsic_camera_matrix = np.array([
-        [focal_length, 0, sensor_size[0] / 2],
-        [0, focal_length, sensor_size[1] / 2],
-        [0, 0, 1]
-    ])
+        # Compute Rotation and Translation -> Transformation Matrix
+        
+        R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
+        R_C2W = R_C2W @ matrix_from_axis_angle((1, 0, 0, np.pi))     # flips about axis 1 to obtain Camera Frame
+        cam2world = transform_from(R_C2W, t_C2W)
+
+        # Create intrinsic camera matrix
+        intrinsic_camera_matrix = np.array([
+            [focal_length, 0, sensor_size[0] / 2],
+            [0, focal_length, sensor_size[1] / 2],
+            [0, 0, 1]
+        ])
 
 
-    # Transform grid and box from world to image
-    image_box = world2image(box, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
-    image_center = world2image([center], cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+        # Transform grid and box from world to image
+        image_box = world2image(box, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+        image_center = world2image([center], cam2world, sensor_size, image_size, focal_length, kappa=kappa)
 
-    # Create the bounding box
-    bounding_box, bb_center = create_bounding_box(image_box)
+        
+        
+        bounding_box, bb_center = create_bounding_box(image_box)
+        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :
+            break
+
     #print(f"Bounding Box Corners: {bounding_box}")
 
     # Compute Bounding Box Center's Azimuth and Elevation
@@ -328,4 +418,4 @@ def visualize_scene(image_size, elevation, azimuth, box, world_grid, camera_posi
 
 
 
-print(getImage(focal_length=0.0036, kappa=0.4))
+# print(getImage(focal_length=0.0036, kappa=0.4))
