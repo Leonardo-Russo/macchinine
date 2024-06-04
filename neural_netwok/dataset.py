@@ -19,10 +19,11 @@ class MacchinineDataset(Dataset):
         self.data_path= data_path
         if data_path is not None:
             self.df = pd.read_csv(data_path)
+            self.df = self.df.dropna(subset=['y_center'])
             with open("./camera_parameters.json") as json_file:
                 self.camera_params=json.load(json_file)
 
-            self.getSample=self._readSample2
+            self.getSample=self._readSample
             
             self.focal_length=  float(self.camera_params['focal_length'])/10000
             self.sensor_size=self.camera_params['sensor_size'] 
@@ -33,9 +34,7 @@ class MacchinineDataset(Dataset):
             self.to_point = np.array([self.camera_params['camera_target']])  
             self.to_point = self.to_point.reshape(1, 3)
 
-            # #print("point_on_image=array([[354, 233]]) ")
-            # #print(f"{self.from_point=}")
-            # #print(f"{self.to_point=}")
+ 
 
         else:
             self.getSample= self._generateImage 
@@ -84,68 +83,10 @@ class MacchinineDataset(Dataset):
 
 
         return inputs, label, info
-    
+ 
+
+
     def _readSample(self, idx):
-        desired_row_index =  idx+1
-
-
-        # Use `skiprows` to skip all rows directly up to the row before your desired row
-        # You should not skip the header, so use a lambda to skip all but the desired row
-        df = pd.read_csv(self.data_path, skiprows=lambda x: x not in [0, desired_row_index])
-        image_size_x = self.image_size[0]
-        image_size_y = self.image_size[0]
-        
-        bbox_x_center = df.at[0, 'bbox_x_center']
-        bbox_y_center = df.at[0, 'bbox_y_center']
-        bbox_width = df.at[0, 'bbox_width']
-        bbox_height =df.at[0, 'bbox_height']
-        
-        x_center = df.at[0, 'x_center']
-        y_center = df.at[0, 'y_center']
-        center_coordinates=np.array([bbox_x_center, bbox_y_center])
-        center_coordinates = center_coordinates.reshape(1, 2)
-
-        up = np.array([0, 0, 1])
-
-        R_C2W, t_C2W = lookat(self.from_point, self.to_point, up)     # these are the rotation and translation matrices
-        R_C2W = R_C2W @ matrix_from_axis_angle((1, 0, 0, np.pi))     # flips about axis 1 to obtain Camera Frame
-        R_C2W=R_C2W.reshape(3, 3)
-        print(R_C2W)
-
-
-        azimuth, elevation, b_hat= getAzimuthElevation(
-            self.focal_length, 
-            self.sensor_size, 
-            self.image_size, 
-            center_coordinates, 
-            R_C2W.reshape(3, 3)
-        )
-        phi = np.pi/2 - elevation
-        #todo image center 
-
-
-        error=np.array([float((x_center-bbox_x_center)/image_size_x) ,float((y_center-bbox_y_center)/image_size_y)],  dtype='f')
-
-        inputs=np.array([bbox_width/image_size_x,bbox_height/image_size_y, phi,azimuth], dtype='f')
-        label=error
-        
-        info={'bb_center':center_coordinates,
-                'focal_length':np.array([self.focal_length]),
-                'sensor_size':np.array([self.sensor_size]),
-                'image_size':np.array([ self.image_size]),
-                'r': R_C2W,
-                'true_center':np.array([center_coordinates]),
-                'camera_position':self.from_point[0]
-                }
-        
-        return inputs,label,info
-
-
-
-
-
-
-    def _readSample2(self, idx):
         #idx= 211 
         nth_row = self.df.iloc[idx-1] 
 
@@ -295,16 +236,17 @@ class MacchinineDataset(Dataset):
 
 #focal_length, sensor_size, image_size, cm_projected, r
 class MachinineDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size=64, num_samples=300000, data_path= None):
+    def __init__(self, batch_size=64, num_samples=300000, train_data_path= None, eval_data_path= None):
         super().__init__()
         self.batch_size = batch_size
         self.num_samples = num_samples
-        self.data_path= data_path 
+        self.train_data_path= train_data_path 
+        self.eval_data_path= eval_data_path 
 
     def setup(self, stage=None):
-        self.train = MacchinineDataset(num_samples=self.num_samples, data_path= self.data_path)
-        self.val = MacchinineDataset(num_samples=5000,data_path= self.data_path)
-        self.test = MacchinineDataset(num_samples=10000,data_path= self.data_path)
+        self.train = MacchinineDataset(num_samples=self.num_samples, data_path= self.train_data_path)
+        self.val = MacchinineDataset(num_samples=5000,data_path= self.eval_data_path)
+        self.test = MacchinineDataset(num_samples=10000,data_path= self.eval_data_path)
 
     def train_dataloader(self):
         return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=1)

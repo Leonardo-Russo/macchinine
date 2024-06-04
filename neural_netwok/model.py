@@ -28,17 +28,14 @@ class MLP(pl.LightningModule):
         layers.append(nn.Linear(hidden_sizes[-1], output_size))
 
         self.layers = nn.Sequential(*layers)
+        self.train_projected_errors = []
+        self.val_projected_errors = []
 
     def forward(self, x):
-        #print(x.shape)
-        #x=x.view(x.size(0), -1)
-       # print(x.shape)
         return self.layers(x)
 
     def training_step(self, batch, batch_idx):
         x, y, info = batch
-        print(f"{x=}")
-        print(f"{y=}")
         y_hat = self(x)
         loss = F.mse_loss(y_hat, y)
 
@@ -55,50 +52,69 @@ class MLP(pl.LightningModule):
           r= info['r'][b].cpu().detach().numpy()
    
 
-        #   print(f"{bb_center=}")
-        #   print(f"{image_size=}")
-        #   print(f"{focal_length=}")
-        #   print(f"{sensor_size=}")
-        #   print(f"{true_center=}")
-        #   print(f"{r=}")
-
           error_hat= y_hat[b].cpu().detach().numpy()
-          cm_projected= bb_center+ error_hat* image_size #np.array([[543.3329202855937,82.19877841484055]])
-          #cm_projected= bb_center#+ error_hat* image_size
+          cm_projected= bb_center+ error_hat* image_size 
           _, _, cm_hat = getAzimuthElevation(focal_length,sensor_size, image_size, cm_projected, r, check_flag=False)
           center_info = findRoadIntersection(camera_position, cm_hat)
 
-          #print(f"{true_center.shape=}  ||| {center_info.shape=}")
-
-
-          if(batch_idx>1500):
-            print(f"{true_center[:2]=} {center_info=}")
-            print(f"{cm_projected=}")
-            print(f"{trun_image_center=}")
-            print(f"{error_hat=}")
-            print(f"{bb_center=}")
-            print(f"{error_hat* image_size=}")
-          
           projected_errors.append(np.mean(((true_center[:2] - center_info)**2), axis=0))
 
 
 
 
         projected_errors_mean= np.array(projected_errors).mean()
+        self.train_projected_errors.append(projected_errors_mean)
         self.log('train_loss', loss, prog_bar=True)
         self.log('error', projected_errors_mean, prog_bar=True)
 
-        # print(f"{projected_errors_mean=}")
-        # print(f"{true_center[:2]=}")
-        # print(f"{center_info=}")
-        # print(f"{np.linalg.norm(true_center[:2]- center_info)=}")
         return loss
+
+    def on_train_epoch_end(self):
+        # Average the accumulated projected errors
+        avg_train_projected_errors = torch.mean(torch.tensor(self.train_projected_errors))
+        self.log('avg_train_projected_errors', avg_train_projected_errors, prog_bar=True)
+        # Clear the list for next epoch
+        self.train_projected_errors = []
 
     def validation_step(self, batch, batch_idx):
         x, y, info = batch
         y_hat = self(x)
         loss = F.mse_loss(y_hat, y)
         self.log('val_loss', loss, prog_bar=True)
+
+
+        projected_errors= []
+        for b in range(len(batch)):
+          bb_center= info['bb_center'][b].cpu().detach().numpy()
+          image_size= info['image_size'][b][0].cpu().detach().numpy().tolist()
+          focal_length= info['focal_length'][b].cpu().detach().numpy().tolist()[0]
+          sensor_size= info['sensor_size'][b][0].cpu().detach().numpy().tolist()
+          camera_position = info['camera_position'][b].cpu().detach().numpy()
+          true_center = info['true_center'][b][0].cpu().detach().numpy()
+          trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
+          
+          r= info['r'][b].cpu().detach().numpy()
+   
+          error_hat= y_hat[b].cpu().detach().numpy()
+          cm_projected= bb_center+ error_hat* image_size 
+          _, _, cm_hat = getAzimuthElevation(focal_length,sensor_size, image_size, cm_projected, r, check_flag=False)
+          center_info = findRoadIntersection(camera_position, cm_hat)
+          projected_errors.append(np.mean(((true_center[:2] - center_info)**2), axis=0))
+
+        projected_errors_mean= np.array(projected_errors).mean()
+        self.val_projected_errors.append(projected_errors_mean)
+
+        self.val_projected_errors.append(projected_errors_mean)
+        self.log('val_error', projected_errors_mean, prog_bar=True)
+
+        return loss
+    def on_validation_epoch_end(self):
+        # Average the accumulated projected errors
+        avg_val_projected_errors = torch.mean(torch.tensor(self.val_projected_errors))
+        self.log('avg_val_projected_errors', avg_val_projected_errors, prog_bar=True)
+        # Clear the list for next epoch
+        self.val_projected_errors = []
+
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=0.01)

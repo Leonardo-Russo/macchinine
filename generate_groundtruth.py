@@ -93,12 +93,21 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
                         [x-l/2, y+w/2, z+h, 1],
                         [x-l/2, y-w/2, z+h, 1]])
             
+            
             # Transform the box points and box center coords from 3D world coords to 2D sensor coords 
             image_box = world2image(box_points, cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
             image_center = world2image(np.array([[x, y, z, 1]]), cam2world=camera_params['cam2world'], sensor_size=camera_params['sensor_size'], image_size=camera_params['image_size'], focal_length=camera_params['focal_length'] * 1e-4, kappa=camera_params['kappa'])
 
-            if np.isnan(image_box).any() or np.isnan(image_center).any():
-                print(f"NaN values detected in image_box or image_center for object {obj_name} -> skipping this frame...")
+            corner_out_picture=False
+            for x,y in image_box:
+                cx,cy=image_center[0]
+                x_limit, y_limit=camera_params['image_size']
+
+                if x<0 or x>x_limit or y<0 or y>y_limit or cx<0 or cx>x_limit or cy<0 or cy>y_limit:
+                    corner_out_picture=True
+                     
+            if np.isnan(image_box).any() or np.isnan(image_center).any() or corner_out_picture:
+                #print(f"NaN values detected in image_box or image_center for object {obj_name} -> skipping this frame...")
                 # this means that the object is not fully visible in the image and for this reason we cannot (for now) handle the 
                 # computation of the center of the bounding box. For this reason, we'll skip this object and continue with the next one.
                 bbox = {
@@ -118,7 +127,7 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
                 bbox_corners, bbox_center = utils.create_bounding_box(image_box)
 
                 # DEBUG visualization
-                if i >= 24856:
+                if i >= 24856 and debug:
                     world_grid = make_world_grid(n_lines=70, n_points_per_line=500, xlim=[-50, 50], ylim=[-50, 50])
                     image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
                     utils.visualize_scene(image_size, box_points, world_grid, camera_position, image_grid, image_box, bbox_corners, image_center, bbox_center)
@@ -175,8 +184,8 @@ def generate_groundtruth(data, camera_params, output_csv_path, debug=False):
             
 
 if __name__ == "__main__":
-    csv_filepath = "SinD/Data/8_02_1/Veh_smoothed_tracks.csv"
-    # csv_filepath = "SinD/Data/8_02_1/three_vehicles_track.csv"
+    #csv_filepath = "SinD/Data/8_02_1/Veh_smoothed_tracks.csv"
+    csv_filepath = "SinD/Data/8_02_1/three_vehicles_track.csv"
     sind_data = load_csv_data(csv_filepath)
 
     # -- Get the camera parameters --
@@ -222,6 +231,6 @@ if __name__ == "__main__":
         json.dump(camera_additional_params, json_file, indent=4)
 
     # -- Generate the ground truth tracking data --
-    output_csv_path = "tracking_groundtruth.csv"
+    output_csv_path = "eval_groundtruth.csv"
     generate_groundtruth(sind_data, camera_params, output_csv_path=output_csv_path, debug=False)
     print(f"Ground truth tracking data saved to {output_csv_path}")
