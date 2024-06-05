@@ -123,10 +123,27 @@ def create_bounding_box(points):
     bottom_right = (x_max, y_max)
     bottom_left = (x_min, y_max)
 
-    center=np.array([[
-        int((x_max+x_min)/2),
-        int((y_max+y_min)/2)
-    ]])
+    # Check for NaN
+    if np.isnan(x_min) or np.isnan(x_max) or np.isnan(y_min) or np.isnan(y_max):
+        # print("Something in Bounding Box is NaN!"
+        #       "x_min: ", x_min,
+        #       "x_max: ", x_max,
+        #       "y_min: ", y_min,
+        #       "y_max: ", y_max)
+        # print("Points are: ", points)
+
+        center = np.array([[
+            np.nan,
+            np.nan
+        ]])
+
+        return [top_left, top_right, bottom_right, bottom_left], center
+    
+    else:
+        center=np.array([[
+            int((x_max+x_min)/2),
+            int((y_max+y_min)/2)
+        ]])
 
     return [top_left, top_right, bottom_right, bottom_left], center
 
@@ -287,12 +304,14 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     # print(f"{from_point=}")
     # print(f"{to_point=}")
 
+    scene_dim = 15                  # this represents the size of the square in which we intend to place the vehicles around the camera
+
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
     good_sample = False
     max_samples = 500
     samples_counter = 1
     while not good_sample:
-        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-15, 15), ylim=(-15, 15), zlim=(0, 0))
+        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-scene_dim, scene_dim), ylim=(-scene_dim, scene_dim), zlim=(0, 0))
 
         # Compute Rotation and Translation -> Transformation Matrix
         R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
@@ -314,7 +333,8 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         
         
         bounding_box, bb_center = create_bounding_box(image_box)
-        if  not (np.all(bb_center > 0) and np.all(bb_center < image_size)) :
+
+        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :
             good_sample = True
 
         else:

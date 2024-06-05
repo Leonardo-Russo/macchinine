@@ -47,7 +47,7 @@ class MLP(pl.LightningModule):
           sensor_size= info['sensor_size'][b][0].cpu().detach().numpy().tolist()
           camera_position = info['camera_position'][b].cpu().detach().numpy()
           true_center = info['true_center'][b][0].cpu().detach().numpy()
-          trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
+        #   trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
           
           r= info['r'][b].cpu().detach().numpy()
    
@@ -91,7 +91,7 @@ class MLP(pl.LightningModule):
           sensor_size= info['sensor_size'][b][0].cpu().detach().numpy().tolist()
           camera_position = info['camera_position'][b].cpu().detach().numpy()
           true_center = info['true_center'][b][0].cpu().detach().numpy()
-          trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
+        #   trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
           
           r= info['r'][b].cpu().detach().numpy()
    
