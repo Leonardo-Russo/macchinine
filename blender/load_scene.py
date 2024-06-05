@@ -109,12 +109,12 @@ def import_background(filepath, location=(20, 10, 0), scale=(0.07, 0.07, 0.07)):
 
 
 # -- Load the prepared scene (background + camera + lighting) saved in a .blend file --
-scene_filepath = "/Users/matteo/Documents/Projects/Macchinine/macchinine/blender/untitled.blend"
+scene_filepath = os.path.join(os.getcwd(), "blender", "untitled.blend")
 bpy.ops.wm.open_mainfile(filepath=scene_filepath)
 
 # -- Load CSV Data -- #
 #csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\three_vehicles_track.csv"
-csv_filepath = r"/Users/matteo/Documents/Projects/Macchinine/macchinine/SinD/Data/8_02_1/three_vehicles_track.csv"
+csv_filepath = os.path.join(os.getcwd(), "SinD", "Data", "8_02_1", "three_vehicles_track.csv")
 load_csv_data(csv_filepath)
 
 # # -- Import Background -- #
@@ -128,6 +128,5 @@ load_csv_data(csv_filepath)
 # setup_lighting()
 
 # -- Save the Scene -- #
-output_dir = os.getcwd()
-output_filepath = os.path.join(output_dir, "blender/untitled.blend")
+output_filepath = os.path.join(os.getcwd(), "blender", "untitled.blend")
 bpy.ops.wm.save_as_mainfile(filepath=output_filepath)
