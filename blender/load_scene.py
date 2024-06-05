@@ -83,9 +83,9 @@ def setup_lighting():
     ] 
 
     for pos in light_positions:
-        bpy.ops.object.light_add(type='POINT', location=pos)
+        bpy.ops.object.light_add(type='SUN', location=pos)
         light = bpy.context.object
-        light.data.energy = 10000  # Adjust the energy of the lights
+        light.data.energy = 10  # Adjust the energy of the lights
 
 def apply_material_to_object(obj, color=(0.8, 0.8, 0.8, 1)):
     if not obj.data.materials:
@@ -107,19 +107,25 @@ def import_background(filepath, location=(20, 10, 0), scale=(0.07, 0.07, 0.07)):
     background_obj.scale = scale
     bpy.ops.object.select_all(action='DESELECT')
 
+
+# -- Load the prepared scene (background + camera + lighting) saved in a .blend file --
+scene_filepath = "/Users/matteo/Documents/Projects/Macchinine/macchinine/blender/untitled.blend"
+bpy.ops.wm.open_mainfile(filepath=scene_filepath)
+
 # -- Load CSV Data -- #
-csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\three_vehicles_track.csv"
+#csv_filepath = r"G:\Il mio Drive\Codes\Python\Macchinine\SinD\Data\8_02_1\three_vehicles_track.csv"
+csv_filepath = r"/Users/matteo/Documents/Projects/Macchinine/macchinine/SinD/Data/8_02_1/three_vehicles_track.csv"
 load_csv_data(csv_filepath)
 
-# -- Import Background -- #
-background_filepath = r"G:\Il mio Drive\Codes\Python\macchinine\blender\american-road-intersection\source\InterRoad.dae"
-import_background(background_filepath)
+# # -- Import Background -- #
+# background_filepath = r"G:\Il mio Drive\Codes\Python\macchinine\blender\american-road-intersection\source\InterRoad.dae"
+# import_background(background_filepath)
 
-# -- Setup Camera -- #
-setup_camera()
+# # -- Setup Camera -- #
+# setup_camera()
 
-# -- Setup Lighting -- #
-setup_lighting()
+# # -- Setup Lighting -- #
+# setup_lighting()
 
 # -- Save the Scene -- #
 output_dir = os.getcwd()
