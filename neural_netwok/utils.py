@@ -270,7 +270,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
 
     # Calculate random view and camera position
     alpha, beta = random_view()                     # alpha, beta are respectively azimuth and elevation for the camera orientation
-    camera_distance = random.uniform(20, 40)
+    camera_distance = random.uniform(5, 30)
 
     camera_position = camera_distance * np.array([
         np.cos(beta) * np.cos(alpha),
@@ -282,21 +282,19 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     up = np.array([0, 0, 1])
 
     # Define 'from' and 'to' points for the camera
-
-
     from_point = camera_position
     to_point = np.array([0, 0, 0])    # the camera always points at the origin of the world coordinates
-
     # print(f"{from_point=}")
     # print(f"{to_point=}")
-    # Generate the Box
 
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
-    while True:
-        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-5, 5), ylim=(-5, 5), zlim=(0, 0))
+    good_sample = False
+    max_samples = 500
+    samples_counter = 1
+    while not good_sample:
+        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-15, 15), ylim=(-15, 15), zlim=(0, 0))
 
         # Compute Rotation and Translation -> Transformation Matrix
-        
         R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
         R_C2W = R_C2W @ matrix_from_axis_angle((1, 0, 0, np.pi))     # flips about axis 1 to obtain Camera Frame
         cam2world = transform_from(R_C2W, t_C2W)
@@ -316,8 +314,14 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         
         
         bounding_box, bb_center = create_bounding_box(image_box)
-        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :
-            break
+        if  not (np.all(bb_center > 0) and np.all(bb_center < image_size)) :
+            good_sample = True
+
+        else:
+            samples_counter += 1
+            if samples_counter > max_samples:
+                raise ValueError("Cannot find a bounding box center that is inside the image plane.")
+                break
 
     #print(f"Bounding Box Corners: {bounding_box}")
 
