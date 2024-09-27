@@ -36,49 +36,50 @@ class MLP(pl.LightningModule):
         return self.layers(x)
 
     def training_step(self, batch, batch_idx):
-        x, y, info = batch
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat, y)
+        x, true_centers, info = batch
+        computed_centers = self(x)
+
+        loss = F.l1_loss(computed_centers, true_centers)
 
         if self.debug:
-            print("y_hat = ", y_hat)
-            print("y = ", y)
+            print("computed_centers: ", computed_centers)
+            print("true_centers: ", true_centers)
 
-        projected_errors= []
-        for b in range(len(batch)):
-            bb_center = info['bb_center'][b].cpu().detach().numpy()
-            image_size = info['image_size'][b][0].cpu().detach().numpy().tolist()
-            focal_length = info['focal_length'][b].cpu().detach().numpy().tolist()[0]
-            sensor_size = info['sensor_size'][b][0].cpu().detach().numpy().tolist()
-            camera_position = info['camera_position'][b].cpu().detach().numpy()
-            true_center = info['true_center'][b][0].cpu().detach().numpy()
-            az = info['azimuth'][b].cpu().detach().numpy()
-            el = info['elevation'][b].cpu().detach().numpy()
+        # projected_errors= []
+        # for b in range(len(batch)):
+        #     bb_center = info['bb_center'][b].cpu().detach().numpy()
+        #     image_size = info['image_size'][b][0].cpu().detach().numpy().tolist()
+        #     focal_length = info['focal_length'][b].cpu().detach().numpy().tolist()[0]
+        #     sensor_size = info['sensor_size'][b][0].cpu().detach().numpy().tolist()
+        #     camera_position = info['camera_position'][b].cpu().detach().numpy()
+        #     true_center = info['true_center'][b][0].cpu().detach().numpy()
+        #     az = info['azimuth'][b].cpu().detach().numpy()
+        #     el = info['elevation'][b].cpu().detach().numpy()
             
-            r = info['r'][b].cpu().detach().numpy()
+        #     r = info['r'][b].cpu().detach().numpy()
 
-            error_hat = y_hat[b].cpu().detach().numpy()
-            if self.debug:
-                print("error hat: ", error_hat)
-                print("image size: ", image_size)
-            cm_projected = bb_center + error_hat * image_size 
-            _, _, cm_hat = getAzimuthElevation(focal_length, sensor_size, image_size, cm_projected, r, check_flag=False)
-            center_info = findRoadIntersection(camera_position, cm_hat)
+        #     error_hat = y_hat[b].cpu().detach().numpy()
+        #     if self.debug:
+        #         print("error hat: ", error_hat)
+        #         print("image size: ", image_size)
+        #     cm_projected = bb_center + error_hat * image_size 
+        #     _, _, cm_hat = getAzimuthElevation(focal_length, sensor_size, image_size, cm_projected, r, check_flag=False)
+        #     center_info = findRoadIntersection(camera_position, cm_hat)
 
-            projected_error = np.mean(((true_center[:2] - center_info)**2), axis=0)
-            threshold = 2
-            if projected_error > threshold:
-                print(f"az = {np.rad2deg(az):3.2f}\tel = {np.rad2deg(el):3.2f}\terr = {projected_error:2.2f}")
+        #     projected_error = np.mean(((true_center[:2] - center_info)**2), axis=0)
+        #     threshold = 2
+        #     if projected_error > threshold:
+        #         print(f"az = {np.rad2deg(az):3.2f}\tel = {np.rad2deg(el):3.2f}\terr = {projected_error:2.2f}")
             
-            projected_errors.append(projected_error)
+        #     projected_errors.append(projected_error)
 
-        projected_errors = np.array(projected_errors)
-        projected_errors_mean = projected_errors.mean()
-        projected_errors_median = np.median(projected_errors)
-        self.train_projected_errors.append(projected_errors_mean)
+        # projected_errors = np.array(projected_errors)
+        # projected_errors_mean = projected_errors.mean()
+        # projected_errors_median = np.median(projected_errors)
+        # self.train_projected_errors.append(projected_errors_mean)
         self.log('train_loss', loss, prog_bar=True)
-        self.log('mean_error', projected_errors_mean, prog_bar=True)
-        self.log('median_error', projected_errors_median, prog_bar=True)
+        # self.log('mean_error', projected_errors_mean, prog_bar=True)
+        # self.log('median_error', projected_errors_median, prog_bar=True)
 
         return loss
 
@@ -90,36 +91,36 @@ class MLP(pl.LightningModule):
         self.train_projected_errors = []
 
     def validation_step(self, batch, batch_idx):
-        x, y, info = batch
-        y_hat = self(x)
-        # loss = F.mse_loss(y_hat, y)
-        loss = F.l1_loss(y_hat, y)
+        x, true_centers, info = batch
+        computed_centers = self(x)
+
+        loss = F.l1_loss(computed_centers, true_centers)
         self.log('val_loss', loss, prog_bar=True)
 
 
-        projected_errors= []
-        for b in range(len(batch)):
-          bb_center= info['bb_center'][b].cpu().detach().numpy()
-          image_size= info['image_size'][b][0].cpu().detach().numpy().tolist()
-          focal_length= info['focal_length'][b].cpu().detach().numpy().tolist()[0]
-          sensor_size= info['sensor_size'][b][0].cpu().detach().numpy().tolist()
-          camera_position = info['camera_position'][b].cpu().detach().numpy()
-          true_center = info['true_center'][b][0].cpu().detach().numpy()
-        #   trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
+        # projected_errors= []
+        # for b in range(len(batch)):
+        #   bb_center= info['bb_center'][b].cpu().detach().numpy()
+        #   image_size= info['image_size'][b][0].cpu().detach().numpy().tolist()
+        #   focal_length= info['focal_length'][b].cpu().detach().numpy().tolist()[0]
+        #   sensor_size= info['sensor_size'][b][0].cpu().detach().numpy().tolist()
+        #   camera_position = info['camera_position'][b].cpu().detach().numpy()
+        #   true_center = info['true_center'][b][0].cpu().detach().numpy()
+        # #   trun_image_center = info['trun_image_center'][b][0].cpu().detach().numpy()
           
-          r= info['r'][b].cpu().detach().numpy()
+        #   r= info['r'][b].cpu().detach().numpy()
    
-          error_hat= y_hat[b].cpu().detach().numpy()
-          cm_projected= bb_center+ error_hat* image_size 
-          _, _, cm_hat = getAzimuthElevation(focal_length,sensor_size, image_size, cm_projected, r, check_flag=False)
-          center_info = findRoadIntersection(camera_position, cm_hat)
-          projected_errors.append(np.mean(((true_center[:2] - center_info)**2), axis=0))
+        #   error_hat= y_hat[b].cpu().detach().numpy()
+        #   cm_projected= bb_center+ error_hat* image_size 
+        #   _, _, cm_hat = getAzimuthElevation(focal_length,sensor_size, image_size, cm_projected, r, check_flag=False)
+        #   center_info = findRoadIntersection(camera_position, cm_hat)
+        #   projected_errors.append(np.mean(((true_center[:2] - center_info)**2), axis=0))
 
-        projected_errors_mean= np.array(projected_errors).mean()
-        self.val_projected_errors.append(projected_errors_mean)
+        # projected_errors_mean= np.array(projected_errors).mean()
+        # self.val_projected_errors.append(projected_errors_mean)
 
-        self.val_projected_errors.append(projected_errors_mean)
-        self.log('val_error', projected_errors_mean, prog_bar=True)
+        # self.val_projected_errors.append(projected_errors_mean)
+        # self.log('val_error', projected_errors_mean, prog_bar=True)
 
         return loss
     def on_validation_epoch_end(self):

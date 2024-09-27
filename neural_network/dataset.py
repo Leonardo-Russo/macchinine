@@ -69,8 +69,8 @@ class MacchinineDataset(Dataset):
         inputs = np.array([bbox_width_normalized, bbox_height_normalized, sample["phi"], sample["azimuth"]], dtype='f')
         
         # y
-        error = [x_center_normalized - bbox_x_center_normalized , y_center_normalized - bbox_y_center_normalized]   # y
-        label = np.array(error, dtype='f')
+        true_center = sample['true_center']
+        label = np.array(true_center, dtype='f')
 
         # infos
         info={'bb_center':sample['bb_center'],
