@@ -37,7 +37,9 @@ class MLP(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, true_centers, info = batch
-        computed_centers = self(x)
+        
+        # Forward Pass
+        computed_centers = self(x)          # the model is supposed to compute (x, y) coordinates, while z = 0
 
         loss = F.l1_loss(computed_centers, true_centers)
 

@@ -26,7 +26,6 @@ def is_approx_rotation_matrix(R, tolerance=1e-4):
 
 def generate_random_box(hlim=(2, 3), wlim=(3, 4), llim=(3, 5), xlim=(0, 0), ylim=(0, 0), zlim=(0, 0)):
     """ Generate random box with the given limit. """
-
     # Generate Box Dimensions
     h = random.uniform(hlim[0], hlim[1])
     w = random.uniform(wlim[0], wlim[1])
@@ -52,7 +51,6 @@ def generate_random_box(hlim=(2, 3), wlim=(3, 4), llim=(3, 5), xlim=(0, 0), ylim
 
 def generate_random_camera_position(xlim=(0, 0), ylim=(0, 0), zlim=(5, 5)):
     """ Generate random box with the given limit. """
-
     # Generate Camera Position
     x = random.uniform(xlim[0], xlim[1])
     y = random.uniform(ylim[0], ylim[1])
@@ -62,8 +60,9 @@ def generate_random_camera_position(xlim=(0, 0), ylim=(0, 0), zlim=(5, 5)):
     # Retrieve alpha and beta angles
     R, _ = lookat(camera_position, np.array([0, 0, 0]), np.array([0, 0, 1]))
     R = R @ matrix_from_axis_angle((1, 0, 0, np.pi))
-    alpha = np.arctan2(R[1], R[0])          # TODO: this is wrong but for now I don't care cause I don't use them !!!
-    beta = np.arcsin(R[2])
+    r_hat = R[:, 0]     # x-axis of the camera frame
+    alpha = np.arctan2(r_hat[1], r_hat[0])          # TODO: this is wrong but for now I don't care cause I don't use them !!!
+    beta = np.arcsin(r_hat[2])
 
     return camera_position, alpha, beta
 
@@ -162,60 +161,6 @@ def getAzimuthElevation(focal_length, sensor_size, image_size, point_on_image, R
     """
     Retrieve Azimuth and Elevation angles from the bounding box center coordinates on image plane.
     """
-    # print(f"{type(focal_length)=}")
-    # print(f"{type(sensor_size)=}")
-    # print(f"{type(image_size)=}")
-    # print(f"{type(point_on_image)=}")
-    # print(f"{type(R_C2W)=}")
-
-
-    # print(f"{focal_length=}")
-    # print(f"{sensor_size=}")
-    # print(f"{image_size=}")
-    #print(f"{point_on_image=}")
-    # print(f"{R_C2W=}")
-    
-    # print(f"{len(sensor_size)=}")
-    # print(f"{image_size=}")
-    # print(f"{len(point_on_image)=}")
-    # print(f"{R_C2W.shape=}")
-    # if not isinstance(focal_length, float):
-    #     raise TypeError("focal_length must be a float")
-    # if not isinstance(sensor_size, (tuple, list)):
-    #         raise TypeError(f"sensor_size must be a tuple or a list, instead it is {type(sensor_size)=} with value {sensor_size=}")
-    # if not isinstance(image_size, (tuple, list)):
-    #     raise TypeError("image_size must be a tuple")
-    # if not isinstance(point_on_image, np.ndarray):
-    #     raise TypeError("point_on_image must be a numpy.ndarray")
-    # if not isinstance(R_C2W, np.ndarray):
-    #     raise TypeError("R_C2W must be a numpy.ndarray")
-
-    # # Checking if focal_length is within a specific range
-    # if not (0.0001 < focal_length < 0.01):
-    #     raise ValueError("focal_length must be between 0.0001 and 0.01.")
-
-    # # Checking if sensor_size's width and height are within specified bounds
-    # if not (0.000367 < sensor_size[0] < 0.0367 and 0.000274 < sensor_size[1] < 0.0274):
-    #     raise ValueError("Sensor size is wrong.")
-
-    # # Checking if a point on the image is within the boundaries of the image size
-    # if (not np.all((0 <= point_on_image) & (point_on_image <= image_size))) and (check_flag):
-    #     raise ValueError(f"point_on_image must be within the bounds of image_size:{point_on_image=}")
-
-    # # Checking if the matrix R_C2W is a valid rotation matrix
-    # if not is_approx_rotation_matrix(R_C2W):
-    #     raise ValueError(f"R_C2W is not a rotation matrix: {R_C2W=}")
-    
-    # if len(sensor_size)!=2:
-    #     raise ValueError(f"len(sensor_size) is diverse from 2: {len(sensor_size)=}")
-
-    # if len(point_on_image)!=1:
-    #     raise ValueError(f"len(point_on_image) is diverse from 1: {len(point_on_image)=}")
-
-    # if R_C2W.shape!= (3,3):
-    #     raise ValueError(f"mast be a 3x3 matrix:, instead  shape {R_C2W.shape=} {R_C2W=} ")
-
-
     # Calculate K Matrix
     fx = (focal_length / sensor_size[0]) * image_size[0]
     fy = (focal_length / sensor_size[1]) * image_size[1]
@@ -260,12 +205,7 @@ def findRoadIntersection(camera_position, direction):
 
     return intersection
 
-
-
 def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), image_size=(640, 480), kappa=0.4):
-    # TODO:
-    # Dobbiamo far si che azimuth e phi non vengano passati nel dizionario al modello ma invece che al suo interno il modello li calcoli
-    # a partire da camera_position e i parametri della bounding box. Quindi dobbiamo solo spostare l'operazione da getImage al modello.
     """
     Generate an image with specified camera settings and visualize the resulting scene.
 
@@ -293,7 +233,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
 
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
     good_sample = False
-    max_samples = 500
+    max_samples = 1000
     samples_counter = 1
     while not good_sample:
         box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-scene_dim, scene_dim), ylim=(-scene_dim, scene_dim), zlim=(0, 0))
@@ -310,7 +250,6 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
             [0, 0, 1]
         ])
 
-
         # Transform from World to Image
         image_box = world2image(box, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
         image_center = world2image([center], cam2world, sensor_size, image_size, focal_length, kappa=kappa)
@@ -323,6 +262,14 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
 
         else:
             samples_counter += 1
+
+            if debug:
+                world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-10, 10], ylim=[-10, 10])
+                image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+                zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
+                _, _, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
+                visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
+
             if samples_counter > max_samples:
                 raise ValueError("Cannot find a bounding box center that is inside the image plane.")
                 break
@@ -331,7 +278,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     azimuth, elevation, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
     phi = np.pi/2 - elevation
 
-    if elevation > 0 and debug:
+    if elevation > 0:
         debug = True            # this is a case that should never happen
 
     testing = 0
@@ -352,25 +299,22 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
         visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
 
-    # Output dictionary
-    out = {
+    # Group all the info for a sample inside a dictionary
+    sample = {
         "camera_position": camera_position,
         "bounding_box": bounding_box,
         "bb_center": bb_center,
-        "azimuth": azimuth,
-        "elevation": elevation,
-        "phi": phi,
         "image_center": image_center,       # 2D coordinates of the bb center projected on the ground
         "image_size": image_size,
         "focal_length": focal_length,
         'sensor_size': sensor_size,
         'image_size' : image_size,
+        'kappa': kappa,
         'r': R_C2W,
-        "true_center": center[:3],          # this is the true CM of the vehicle projected onto the road plane
-
+        "true_center": center[:2]           # this is the true CM of the vehicle projected onto the road plane a.k.a. what we want to predict
     }
 
-    return out
+    return sample
 
 def visualize_scene(image_size, elevation, azimuth, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat):
     """
@@ -381,7 +325,6 @@ def visualize_scene(image_size, elevation, azimuth, box, world_grid, camera_posi
     """
 
     plt.figure(figsize=(12, 5))
-    show_camera = False  # Set to True to show the camera in the plot
 
     # Show the World Image
     ax = make_3d_axis(1, 121, unit="m")
@@ -391,10 +334,6 @@ def visualize_scene(image_size, elevation, azimuth, box, world_grid, camera_posi
     ax.scatter(0, 0, 0, s=20, alpha=1, c='g')
     ax.quiver(camera_position[0], camera_position[1], camera_position[2], b_hat[0], b_hat[1], b_hat[2], length=8, color='red', normalize=True)    # camera pointing direction
     ax.quiver(camera_position[0], camera_position[1], camera_position[2], zc[0], zc[1], zc[2], length=5, color='blue', normalize=True)            # from camera to bb_center direction
-
-    # if show_camera:
-    #     plot_transform(ax, A2B=cam2world, s=0.3, name="Camera")
-    #     plot_camera(ax, intrinsic_camera_matrix, cam2world, sensor_size=sensor_size, virtual_image_distance=0.5)
 
     lim = (-np.max(np.abs(camera_position)) / 2, np.max(np.abs(camera_position)) / 2)
     ax.set_xlim(lim)
