@@ -48,14 +48,15 @@ class MacchinineDataset(Dataset):
             return num_rows_shape-1
             
     def _generateImage(self, idx):
-        sample=getImage(False)
+        # Call the getImage function
+        sample = getImage(debug=False)
 
         left_corner = sample["bounding_box"][0]
         right_corner = sample["bounding_box"][2]
 
         image_size_x = sample["image_size"][0]
         image_size_y = sample["image_size"][1]
-
+        
         bbox_height_normalized = abs(right_corner[1]-left_corner[1]) / image_size_y
         bbox_width_normalized = abs(right_corner[0]-left_corner[0]) / image_size_x
 

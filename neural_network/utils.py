@@ -50,6 +50,23 @@ def generate_random_box(hlim=(2, 3), wlim=(3, 4), llim=(3, 5), xlim=(0, 0), ylim
 
     return points, center_on_road
 
+def generate_random_camera_position(xlim=(0, 0), ylim=(0, 0), zlim=(5, 5)):
+    """ Generate random box with the given limit. """
+
+    # Generate Camera Position
+    x = random.uniform(xlim[0], xlim[1])
+    y = random.uniform(ylim[0], ylim[1])
+    z = random.uniform(zlim[0], zlim[1])
+    camera_position = np.array([x, y, z])
+
+    # Retrieve alpha and beta angles
+    R, _ = lookat(camera_position, np.array([0, 0, 0]), np.array([0, 0, 1]))
+    R = R @ matrix_from_axis_angle((1, 0, 0, np.pi))
+    alpha = np.arctan2(R[1], R[0])          # TODO: this is wrong but for now I don't care cause I don't use them !!!
+    beta = np.arcsin(R[2])
+
+    return camera_position, alpha, beta
+
 
 def generate_box(h=2.5, w=3, l=4, x=0, y=0, z=0):
     """ Generate a box with the given parameters. """
@@ -125,13 +142,6 @@ def create_bounding_box(points):
 
     # Check for NaN
     if np.isnan(x_min) or np.isnan(x_max) or np.isnan(y_min) or np.isnan(y_max):
-        # print("Something in Bounding Box is NaN!"
-        #       "x_min: ", x_min,
-        #       "x_max: ", x_max,
-        #       "y_min: ", y_min,
-        #       "y_max: ", y_max)
-        # print("Points are: ", points)
-
         center = np.array([[
             np.nan,
             np.nan
@@ -148,14 +158,7 @@ def create_bounding_box(points):
     return [top_left, top_right, bottom_right, bottom_left], center
 
 
-def random_view(alim=(0, 2*np.pi), blim=(np.deg2rad(10), np.deg2rad(60))):
-
-    azimuth = random.uniform(alim[0], alim[1])
-    beta = random.uniform(blim[0], blim[1])
-
-    return azimuth, beta
-
-def getAzimuthElevation(focal_length, sensor_size, image_size, point_on_image, R_C2W,check_flag= True):
+def getAzimuthElevation(focal_length, sensor_size, image_size, point_on_image, R_C2W, check_flag= True):
     """
     Retrieve Azimuth and Elevation angles from the bounding box center coordinates on image plane.
     """
@@ -243,17 +246,8 @@ def findRoadIntersection(camera_position, direction):
 
     Returns:
     intersection (numpy.ndarray): The point of intersection on the z=0 plane.
-    """
-    # if not isinstance(camera_position, np.ndarray):
-    #     raise TypeError("camera_position must be a numpy.ndarray")
-    # if not isinstance(direction, np.ndarray):
-    #     raise TypeError("direction must be a numpy.ndarray")
+    """    
 
-    # Extract the z-component of the camera position and the direction vector
-
-    # print(f"{camera_position.shape=}")
-    # print(f"{direction.shape=}")
-    
     camera_position=camera_position.reshape(3)
     c_z = camera_position[2]
     b_z = direction[2]
@@ -285,15 +279,8 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     dict: A dictionary containing information about the camera setup and the generated image.
     """
 
-    # Calculate random view and camera position
-    alpha, beta = random_view()                     # alpha, beta are respectively azimuth and elevation for the camera orientation
-    camera_distance = random.uniform(5, 30)
-
-    camera_position = camera_distance * np.array([
-        np.cos(beta) * np.cos(alpha),
-        np.cos(beta) * np.sin(alpha),
-        np.sin(beta)
-    ])
+    # Define Camera Position and Orientation
+    camera_position, alpha, beta = generate_random_camera_position(xlim=(-5, 5), ylim=(-5, 5), zlim=(5, 5))
 
     # Define vertical direction
     up = np.array([0, 0, 1])
@@ -301,10 +288,8 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     # Define 'from' and 'to' points for the camera
     from_point = camera_position
     to_point = np.array([0, 0, 0])    # the camera always points at the origin of the world coordinates
-    # print(f"{from_point=}")
-    # print(f"{to_point=}")
 
-    scene_dim = 15                  # this represents the size of the square in which we intend to place the vehicles around the camera
+    scene_dim = 25                  # this represents the size of the square in which we intend to place the vehicles around the camera
 
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
     good_sample = False
@@ -346,7 +331,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     azimuth, elevation, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
     phi = np.pi/2 - elevation
 
-    if elevation > 0:
+    if elevation > 0 and debug:
         debug = True            # this is a case that should never happen
 
     testing = 0
