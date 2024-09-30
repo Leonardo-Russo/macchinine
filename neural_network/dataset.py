@@ -14,10 +14,11 @@ import pandas as pd
 
 
 class MacchinineDataset(Dataset):
-    def __init__(self, data_path= None, num_samples=60000, debug=False):
+    def __init__(self, data_path= None, num_samples=60000, kappa=0.4, debug=False):
         self.num_samples = num_samples
         self.data_path= data_path
         self.debug = debug
+        self.kappa = kappa
 
         if data_path is not None:
             self.df = pd.read_csv(data_path)
@@ -48,44 +49,35 @@ class MacchinineDataset(Dataset):
             return num_rows_shape-1
             
     def _generateImage(self, idx):
-        sample=getImage(False)
+        # Call the getImage function
+        sample = getImage(debug=False, kappa=self.kappa)
 
         left_corner = sample["bounding_box"][0]
         right_corner = sample["bounding_box"][2]
 
         image_size_x = sample["image_size"][0]
         image_size_y = sample["image_size"][1]
-
+        
+        # Compute normalized Bounding Box data
         bbox_height_normalized = abs(right_corner[1]-left_corner[1]) / image_size_y
         bbox_width_normalized = abs(right_corner[0]-left_corner[0]) / image_size_x
-
         bbox_x_center_normalized = sample["bb_center"][0][0] / image_size_x
         bbox_y_center_normalized = sample["bb_center"][0][1] / image_size_y
 
-        x_center_normalized = sample["image_center"][0][0] / image_size_x
-        y_center_normalized = sample["image_center"][0][1] / image_size_y
+        # Compute Bounding Box Center's Azimuth and Elevation
+        azimuth, elevation, _ = getAzimuthElevation(sample['focal_length'], sample['sensor_size'], sample['image_size'], sample['bb_center'], sample['r'])
 
-        # x :   y = f(x)
-        inputs = np.array([bbox_width_normalized, bbox_height_normalized, sample["phi"], sample["azimuth"]], dtype='f')
+        # x :   y = f(x) ,  where f is the model and y is the exact car position
+        # This would otherwise be the output of YOLO
+        inputs = np.array([bbox_x_center_normalized, bbox_y_center_normalized, bbox_width_normalized, bbox_height_normalized, elevation, azimuth], dtype='f')
         
         # y
-        error = [x_center_normalized - bbox_x_center_normalized , y_center_normalized - bbox_y_center_normalized]   # y
-        label = np.array(error, dtype='f')
+        true_center = sample['true_center']
+        label = np.array(true_center, dtype='f')
 
-        # infos
-        info={'bb_center':sample['bb_center'],
-                'focal_length':np.array([sample['focal_length']]),
-                'sensor_size':np.array([sample['sensor_size']]) ,
-                'image_size': np.array([sample['image_size']]),
-                'r': sample[ 'r'],
-                'true_center':np.array([sample['true_center']]),
-                'camera_position':sample['camera_position'],
-                'azimuth': sample['azimuth'],
-                'elevation': sample['elevation']
-                }
+        # In the case of synthetic dataset:     info = sample
 
-
-        return inputs, label, info
+        return inputs, label, sample
 
     def _readSample(self, idx=1):
         nth_row = self.df.iloc[idx-1] 
@@ -164,19 +156,20 @@ class MacchinineDataset(Dataset):
 
 
 class MacchinineDataModule(pl.LightningDataModule):
-    def __init__(self, batch_size=64, num_samples=300000, num_workers=1, train_data_path=None, eval_data_path=None, debug=False):
+    def __init__(self, batch_size=64, num_samples=300000, num_workers=1, train_data_path=None, eval_data_path=None, kappa=0.4, debug=False):
         super().__init__()
         self.batch_size = batch_size
         self.num_samples = num_samples
         self.train_data_path = train_data_path 
         self.eval_data_path = eval_data_path
         self.num_workers = num_workers
+        self.kappa = kappa
         self.debug = debug
 
     def setup(self, stage=None):
-        self.train = MacchinineDataset(num_samples=self.num_samples, data_path=self.train_data_path)
-        self.val = MacchinineDataset(num_samples=int(self.num_samples * 2/7), data_path=self.eval_data_path)
-        self.test = MacchinineDataset(num_samples=int(self.num_samples * 1/7), data_path=self.eval_data_path)
+        self.train = MacchinineDataset(num_samples=self.num_samples, data_path=self.train_data_path, kappa=self.kappa)
+        self.val = MacchinineDataset(num_samples=int(self.num_samples * 2/7), data_path=self.eval_data_path, kappa=self.kappa)
+        self.test = MacchinineDataset(num_samples=int(self.num_samples * 1/7), data_path=self.eval_data_path, kappa=self.kappa)
 
     def train_dataloader(self):
         return DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers, persistent_workers=True)
