@@ -10,7 +10,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 
 class MLP(pl.LightningModule):
-    def __init__(self, input_size, hidden_sizes, output_size, debug=False):
+    def __init__(self, input_size=6, hidden_sizes=(1024, 1024), output_size=2, debug=False):
         super().__init__()
         layers = []
 
