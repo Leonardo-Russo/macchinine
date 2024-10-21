@@ -61,6 +61,7 @@ def generate_random_camera_position(xlim=(0, 0), ylim=(0, 0), zlim=(5, 5)):
     R, _ = lookat(camera_position, np.array([0, 0, 0]), np.array([0, 0, 1]))
     R = R @ matrix_from_axis_angle((1, 0, 0, np.pi))
     r_hat = R[:, 0]     # x-axis of the camera frame
+    # r_hat = np.array([R[0][2], R[1][2], R[2][2]])
     alpha = np.arctan2(r_hat[1], r_hat[0])          # TODO: this is wrong but for now I don't care cause I don't use them !!!
     beta = np.arcsin(r_hat[2])
 
@@ -263,7 +264,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         else:
             samples_counter += 1
 
-            if debug:
+            if debug and good_sample:
                 world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-10, 10], ylim=[-10, 10])
                 image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
                 zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
