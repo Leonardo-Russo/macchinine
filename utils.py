@@ -220,8 +220,12 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     dict: A dictionary containing information about the camera setup and the generated image.
     """
 
+    scene_dim = 25                  # this represents the size of the square in which we intend to place the vehicles around the camera
+    
     # Define Camera Position and Orientation
-    camera_position, alpha, beta = generate_random_camera_position(xlim=(-5, 5), ylim=(-5, 5), zlim=(5, 5))
+    camera_scale_factor = 1.0       # the camera will be generated in an area related to the scene_dim by this factor
+    camera_dim = scene_dim*camera_scale_factor
+    camera_position, alpha, beta = generate_random_camera_position(xlim=(-camera_dim, camera_dim), ylim=(-camera_dim, camera_dim), zlim=(4.5, 5.5))
 
     # Define vertical direction
     up = np.array([0, 0, 1])
@@ -230,14 +234,17 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
     from_point = camera_position
     to_point = np.array([0, 0, 0])    # the camera always points at the origin of the world coordinates
 
-    scene_dim = 25                  # this represents the size of the square in which we intend to place the vehicles around the camera
+    # Define Car Generation Parameters
+    hlim = (1.5, 2)
+    wlim = (3, 4)
+    llim = (5, 8)
 
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
     good_sample = False
     max_samples = 1000
     samples_counter = 1
     while not good_sample:
-        box, center = generate_random_box(hlim=(1.5, 2), wlim=(3, 4), llim=(5, 8), xlim=(-scene_dim, scene_dim), ylim=(-scene_dim, scene_dim), zlim=(0, 0))
+        box, center = generate_random_box(hlim=hlim, wlim=wlim, llim=llim, xlim=(-scene_dim, scene_dim), ylim=(-scene_dim, scene_dim), zlim=(0, 0))
 
         # Compute Rotation and Translation -> Transformation Matrix
         R_C2W, t_C2W = lookat(from_point, to_point, up)     # these are the rotation and translation matrices
@@ -265,10 +272,14 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
             samples_counter += 1
 
             if debug and good_sample:
-                world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-10, 10], ylim=[-10, 10])
+                world_scale_factor = np.max(np.array(hlim[0], hlim[1], wlim[0], wlim[1], llim[0], llim[1])) / scene_dim + 1     # this makes sure that the world grid we use for visualization is always bigger than the area over which the car is
+                world_dim = scene_dim * world_scale_factor
+                world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-world_dim, world_dim], ylim=[-world_dim, world_dim])
                 image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
                 zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
                 _, _, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
+                zc = zc / np.linalg.norm(zc)
+                b_hat = b_hat / np.linalg.norm(b_hat)
                 visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
 
             if samples_counter > max_samples:
