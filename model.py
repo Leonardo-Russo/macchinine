@@ -137,7 +137,7 @@ class MLP(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
         
         # Create the ReduceLROnPlateau scheduler
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.01, patience=10, verbose=True)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
 
         # Scheduler configuration dictionary expected by PyTorch Lightning
         scheduler_config = {

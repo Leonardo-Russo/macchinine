@@ -265,7 +265,7 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         # Compute the bounding box and its center
         bounding_box, bb_center = create_bounding_box(image_box)
 
-        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :
+        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :      # TODO: CHECK IF THIS IS CORRECT
             good_sample = True
 
         else:
