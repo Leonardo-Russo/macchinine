@@ -6,6 +6,7 @@
 
 ## Useful Links
 
+* [CARLA UE5 Branch](https://github.com/carla-simulator/carla/tree/ue5-dev)
 * https://www.scimagojr.com/journalsearch.php?q=18378&tip=sid&clean=0
 * https://www.vestbee.com/blog/articles/best-startup-accelerators-and-incubators-in-switzerland
 * https://www.failory.com/startups/smart-cities-accelerators-incubators
