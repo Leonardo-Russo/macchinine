@@ -61,11 +61,11 @@ def generate_random_camera_position(xlim=(0, 0), ylim=(0, 0), zlim=(5, 5)):
     R, _ = lookat(camera_position, np.array([0, 0, 0]), np.array([0, 0, 1]))
     R = R @ matrix_from_axis_angle((1, 0, 0, np.pi))
     r_hat = R[:, 0]     # x-axis of the camera frame
-    # r_hat = np.array([R[0][2], R[1][2], R[2][2]])
-    alpha = np.arctan2(r_hat[1], r_hat[0])          # TODO: this is wrong but for now I don't care cause I don't use them !!!
+    r_hat = np.array([R[0][2], R[1][2], R[2][2]])
+    alpha = np.arctan2(r_hat[1], r_hat[0])
     beta = np.arcsin(r_hat[2])
 
-    return camera_position, alpha, beta
+    return camera_position, alpha+np.pi, -beta      # NOTE: non ho idea del perchè ma queste due correzioni su alpha e beta funzionano
 
 
 def generate_box(h=2.5, w=3, l=4, x=0, y=0, z=0):
@@ -241,7 +241,8 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
 
     # Create the bounding box, be shure that bb_center is positive and inside the image plane
     good_sample = False
-    max_samples = 1000
+    verbose = True
+    max_samples = 10000
     samples_counter = 1
     while not good_sample:
         box, center = generate_random_box(hlim=hlim, wlim=wlim, llim=llim, xlim=(-scene_dim, scene_dim), ylim=(-scene_dim, scene_dim), zlim=(0, 0))
@@ -262,29 +263,40 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
         image_box = world2image(box, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
         image_center = world2image([center], cam2world, sensor_size, image_size, focal_length, kappa=kappa)
         
-        # Compute the bounding box and its center
-        bounding_box, bb_center = create_bounding_box(image_box)
-
-        if  np.all(bb_center > 0) and np.all(bb_center < image_size) :      # TODO: CHECK IF THIS IS CORRECT
+        if  np.all(image_box > 0) and np.all(image_box < image_size) :      # TODO: CHECK IF THIS IS CORRECT
+            # Compute the bounding box and its center
+            bounding_box, bb_center = create_bounding_box(image_box)
             good_sample = True
 
         else:
             samples_counter += 1
 
-            if debug and good_sample:
-                world_scale_factor = np.max(np.array(hlim[0], hlim[1], wlim[0], wlim[1], llim[0], llim[1])) / scene_dim + 1     # this makes sure that the world grid we use for visualization is always bigger than the area over which the car is
-                world_dim = scene_dim * world_scale_factor
-                world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-world_dim, world_dim], ylim=[-world_dim, world_dim])
-                image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
-                zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
-                _, _, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
-                zc = zc / np.linalg.norm(zc)
-                b_hat = b_hat / np.linalg.norm(b_hat)
-                visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
+        if debug and good_sample:
+            world_scale_factor = np.max(np.array([hlim[0], hlim[1], wlim[0], wlim[1], llim[0], llim[1]])) / scene_dim + 1     # this makes sure that the world grid we use for visualization is always bigger than the area over which the car is
+            world_dim = scene_dim * world_scale_factor
+            world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-world_dim, world_dim], ylim=[-world_dim, world_dim])
+            image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+            zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
+            zc = zc / np.linalg.norm(zc)
 
-            if samples_counter > max_samples:
-                raise ValueError("Cannot find a bounding box center that is inside the image plane.")
-                break
+            _, _, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
+            b_hat = b_hat / np.linalg.norm(b_hat)
+            # NOTE: here b_hat is the versor which is retrieved from the 2D bounding box, if there's an issue with that then it is reflected everywhere else!
+            # It is here that the kappa value fucks up everything!!!
+            # Maybe it is the combination of kappa and fucked up values of sensors and stuff, but this code works perfectly with kappa=0
+            
+            if verbose:
+                print("world_scale_factor: ", world_scale_factor)
+                print("3d_center: ", center)
+                print("zc: ", zc)
+                print("b_hat: ", b_hat)
+                print("image_box: ", image_box)
+                print("image_center: ", image_center)
+                print("samples_counter: ", samples_counter)
+            visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
+
+        if samples_counter > max_samples:
+            raise ValueError("Reached max number of attempts to generate a valid image.")
 
     # Compute Bounding Box Center's Azimuth and Elevation
     azimuth, elevation, b_hat = getAzimuthElevation(focal_length, sensor_size, image_size, bb_center, R_C2W)
@@ -302,14 +314,14 @@ def getImage(debug=False, focal_length=0.0036, sensor_size=(0.00367, 0.00274), i
       print(test_world0[0][:3], [test_world1.tolist()[0], test_world1.tolist()[1], 0])
 
 
-    if debug:
-        # Visualize in debug mode
-        world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-10, 10], ylim=[-10, 10])
-        image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
+    # if debug:
+    #     # Visualize in debug mode
+    #     world_grid = make_world_grid(n_lines=11, n_points_per_line=101, xlim=[-10, 10], ylim=[-10, 10])
+    #     image_grid = world2image(world_grid, cam2world, sensor_size, image_size, focal_length, kappa=kappa)
 
-        # Set up and show figure
-        zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
-        visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
+    #     # Set up and show figure
+    #     zc = np.array([R_C2W[0][2], R_C2W[1][2], R_C2W[2][2]])    # zc versor -> pointing direction of the camera
+    #     visualize_scene(image_size, beta, alpha, box, world_grid, camera_position, image_grid, image_box, bounding_box, image_center, bb_center, zc, b_hat)
 
     # Group all the info for a sample inside a dictionary
     sample = {
@@ -375,3 +387,7 @@ def visualize_scene(image_size, elevation, azimuth, box, world_grid, camera_posi
     ax.set_ylim(0, image_size[1])
 
     plt.show()
+
+
+if __name__ == "__main__":
+    sample = getImage(debug=True, kappa=0)
